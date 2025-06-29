@@ -20,6 +20,7 @@
 *.rar
 
 # Maven specific
+target/**
 target/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -29,6 +30,25 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE specific files
+.idea/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+.vscode/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Application specific
+data/*.db
+config/application.properties
 .mvn/wrapper/maven-wrapper.jar
 
 # IDE specific files
