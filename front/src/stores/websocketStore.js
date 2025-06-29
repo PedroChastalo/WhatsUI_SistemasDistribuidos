@@ -69,8 +69,34 @@ export const useWebSocketStore = create((set, get) => ({
     set({ isLoading: true });
     
     try {
-      const response = await websocketClient.sendRequest('login', { email: username, password });
+      // Garantir que o WebSocket está conectado antes de tentar login
+      console.log('[WebSocketStore] Verificando conexão WebSocket antes do login...');
       
+      // Desconectar qualquer conexão existente para garantir uma conexão limpa
+      // Isso é importante porque o login não precisa de sessionId
+      websocketClient.disconnect();
+      
+      // Aguardar um momento para garantir que a conexão anterior foi fechada
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Iniciar uma nova conexão sem sessionId para login
+      console.log('[WebSocketStore] Iniciando nova conexão WebSocket para login...');
+      websocketClient.connect();
+      
+      // Usar o método waitForConnection do cliente WebSocket que já tem retry embutido
+      try {
+        console.log('[WebSocketStore] Aguardando estabelecimento da conexão...');
+        await websocketClient.waitForConnection(10, 500); // 10 tentativas, 500ms entre cada
+      } catch (connError) {
+        console.error('[WebSocketStore] Falha ao conectar WebSocket:', connError);
+        throw new Error(`Não foi possível estabelecer conexão com o servidor: ${connError.message}`);
+      }
+      
+      console.log('[WebSocketStore] WebSocket conectado, enviando requisição de login...');
+      const response = await websocketClient.sendRequest('login', { email: username, password });
+      console.log('[WebSocketStore] Login bem-sucedido:', response);
+      
+      // Armazenar dados do usuário e sessão
       set({
         isAuthenticated: true,
         currentUser: response.user,
@@ -78,11 +104,18 @@ export const useWebSocketStore = create((set, get) => ({
         isLoading: false
       });
       
+      // Reconectar com o sessionId para manter a sessão autenticada
+      console.log('[WebSocketStore] Reconectando com sessionId para manter sessão...');
+      websocketClient.disconnect();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      websocketClient.connect();
+      
       // Carregar dados iniciais após login
       get().loadInitialData();
       
       return response;
     } catch (error) {
+      console.error('[WebSocketStore] Erro durante login:', error);
       set({ isLoading: false });
       throw error;
     }
