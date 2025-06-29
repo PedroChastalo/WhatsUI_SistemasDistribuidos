@@ -84,7 +84,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>br.com.whatsut.WhatsUTServer</mainClass>
+                            <mainClass>br.com.whatsut.server.WhatsUTServer</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
