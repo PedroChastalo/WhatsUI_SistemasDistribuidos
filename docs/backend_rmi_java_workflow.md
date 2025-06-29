@@ -16,15 +16,17 @@ Você foi contratado para o desenvolvimento de um sistema para comunicação int
 
 4. Dois modos de chat devem ser providos: chat privado, permitindo a conversação entre duas pessoas apenas; e chat em grupo, permitindo com que várias pessoas possam se juntar a uma conversa. No caso da conversa em grupo, o usuário que criou pode dar permissão a outros usuários para entrada.
 
-5. Envio de arquivos: em chats privados, um usuário poderá enviar arquivos ao outro usuário.
+5. **Envio de arquivos**: em chats privados, um usuário poderá enviar arquivos ao outro usuário.
 
-6. Exclusão: um usuário poderá requisitar ao servidor que um usuário seja banido da aplicação. Banir um usuário do grupo é tarefa do administrador do grupo. Caso o administrador do grupo saia, o aplicativo deve decidir quem será o novo administrador, ou se o grupo seja eliminado. Tal opção pode ser ajustada no momento da criação do chat em grupo.
+6. **Exclusão**: um usuário poderá requisitar ao servidor que um usuário seja banido da aplicação. Banir um usuário do grupo é tarefa do administrador do grupo. Caso o administrador do grupo saia, o aplicativo deve decidir quem será o novo administrador, ou se o grupo seja eliminado. Tal opção pode ser ajustada no momento da criação do chat em grupo.
 
-É importante que se tenha telas intuitivas, modernas e "caprichadas" tanto para o cliente quanto para o servidor. Ainda, deve-se apresentar os diagramas UML (atividades, colaboração, sequencia...). Pontos serão dados para chamadas de CallBack, interfaces de servidor para configuração.
+É importante que se tenha telas intuitivas, modernas e "caprichadas" tanto para o cliente quanto para o servidor. Ainda, deve-se apresentar os diagramas UML (atividades, colaboração, sequência...). Pontos serão dados para chamadas de CallBack, interfaces de servidor para configuração.
 
-Com essa tarefa em mente eu fiz o levantamento de requisitos e desvolvi o front que pode ser encontrado na pasta /fron/WhatsUI
+---
 
-Baseado na análise do frontend React do WhatsUT, este documento serve como guia completo para a implementação do servidor backend em Java utilizando RMI (Remote Method Invocation) com sockets.
+## Implementação do Backend
+
+Baseado na análise do frontend React do WhatsUT e nos requisitos acima, este documento serve como guia completo para a implementação do servidor backend em Java utilizando RMI (Remote Method Invocation) com sockets.
 
 ## 1. Arquitetura Geral do Sistema
 
@@ -324,39 +326,73 @@ public interface NotificationListener extends Remote {
 
 ## 9. Persistência de Dados
 
-### 9.1 Estrutura do Banco de Dados
-- Tabela `users`: Armazena informações dos usuários
-- Tabela `messages`: Armazena todas as mensagens
-- Tabela `groups`: Armazena informações dos grupos
-- Tabela `group_members`: Armazena membros dos grupos
-- Tabela `sessions`: Armazena sessões ativas
+### 9.1 Estrutura de Arquivos
+- Arquivo `users.json`: Armazena informações dos usuários
+- Pasta `messages/`: Contém arquivos JSON separados por conversa/grupo
+  - `messages_private_{userId1}_{userId2}.json`: Mensagens privadas entre dois usuários
+  - `messages_group_{groupId}.json`: Mensagens de um grupo específico
+- Arquivo `groups.json`: Armazena informações dos grupos
+- Arquivo `group_members.json`: Armazena membros dos grupos
+- Arquivo `sessions.json`: Armazena sessões ativas
+- Pasta `files/`: Armazena arquivos enviados pelos usuários
 
 ### 9.2 Exemplo de Implementação DAO
 ```java
 public class UserDAO {
-    private Connection connection;
+    private final String filePath = "data/users.json";
+    private final ObjectMapper mapper = new ObjectMapper();
     
     public UserDAO() {
-        this.connection = DatabaseConnection.getConnection();
+        // Garante que o diretório de dados existe
+        File dataDir = new File("data");
+        if (!dataDir.exists()) {
+            dataDir.mkdirs();
+        }
     }
     
     public User findById(String userId) {
-        // Implementação para buscar usuário por ID
+        try {
+            List<User> users = readAllUsers();
+            return users.stream()
+                .filter(u -> u.getUserId().equals(userId))
+                .findFirst()
+                .orElse(null);
+        } catch (IOException e) {
+            logger.error("Erro ao buscar usuário", e);
+            return null;
+        }
     }
     
-    public User findByEmail(String email) {
-        // Implementação para buscar usuário por email
+    public boolean save(User user) {
+        try {
+            List<User> users = readAllUsers();
+            // Remove o usuário se já existir (para atualização)
+            users.removeIf(u -> u.getUserId().equals(user.getUserId()));
+            users.add(user);
+            writeAllUsers(users);
+            return true;
+        } catch (IOException e) {
+            logger.error("Erro ao salvar usuário", e);
+            return false;
+        }
     }
     
-    public List<User> findAll() {
-        // Implementação para buscar todos os usuários
+    private synchronized List<User> readAllUsers() throws IOException {
+        File file = new File(filePath);
+        if (!file.exists()) {
+            return new ArrayList<>();
+        }
+        return mapper.readValue(file, 
+            mapper.getTypeFactory().constructCollectionType(List.class, User.class));
     }
     
-    public User save(User user) {
-        // Implementação para salvar ou atualizar usuário
+    private synchronized void writeAllUsers(List<User> users) throws IOException {
+        File file = new File(filePath);
+        file.getParentFile().mkdirs();
+        mapper.writeValue(file, users);
     }
     
-    // Outros métodos de acesso a dados
+    // Outros métodos: delete, findAll, findByUsername, etc.
 }
 ```
 
@@ -421,19 +457,120 @@ public class WhatsUTServer {
 ### 13.2 Manual de Implantação
 - Instruções para configurar o ambiente
 - Passos para iniciar o servidor
-- Configuração do banco de dados
+- Configuração do sistema de armazenamento de arquivos
 
 ## 14. Considerações para Implantação
 
 ### 14.1 Requisitos de Sistema
 - Java 11 ou superior
-- Banco de dados MySQL/PostgreSQL
 - Mínimo de 4GB de RAM
 - Porta 1099 aberta para RMI
 - Porta 8080 aberta para WebSocket
+- Espaço em disco para armazenamento de arquivos JSON e arquivos enviados pelos usuários
 
 ### 14.2 Configuração
 - Arquivo `config.properties` para configurações do servidor
-- Arquivo `database.properties` para configurações do banco de dados
+- Arquivo `storage.properties` para configurações do armazenamento de dados
 - Arquivo `server.policy` para configurações de segurança RMI
 
+## 15. Cronograma de Desenvolvimento
+
+1. **Semana 1**: Configuração do ambiente e estrutura básica
+   - Configurar projeto Java
+   - Implementar interfaces RMI
+   - Configurar servidor WebSocket básico
+
+2. **Semana 2**: Implementação dos serviços principais
+   - Implementar AuthService
+   - Implementar UserService
+   - Configurar sistema de armazenamento de arquivos
+
+3. **Semana 3**: Implementação de mensagens e grupos
+   - Implementar MessageService
+   - Implementar GroupService
+   - Testar comunicação básica
+
+4. **Semana 4**: Sistema de notificações e testes
+   - Implementar NotificationService
+   - Escrever testes unitários e de integração
+   - Corrigir bugs e otimizar desempenho
+
+5. **Semana 5**: Documentação e entrega
+   - Escrever documentação completa
+   - Preparar manual de implantação
+   - Realizar testes finais
+
+## 16. Entregáveis
+
+1. Código-fonte completo do servidor Java
+2. Estrutura inicial de arquivos JSON para armazenamento de dados
+3. Documentação técnica (Javadoc)
+4. Manual de implantação
+5. Relatório de testes
+6. Arquivo JAR executável do servidor
+
+## 17. Diagramas UML
+
+Para atender aos requisitos do professor, é necessário desenvolver os seguintes diagramas UML:
+
+### 17.1 Diagrama de Classes
+Representando a estrutura estática do sistema, incluindo:
+- Classes de serviço (AuthService, MessageService, GroupService, etc.)
+- Classes de modelo (User, Message, Group, etc.)
+- Relações entre as classes
+
+### 17.2 Diagrama de Sequência
+Ilustrando as interações entre componentes para os principais fluxos:
+- Login e autenticação
+- Envio de mensagens privadas
+- Envio de mensagens em grupo
+- Adição/remoção de usuários em grupos
+- Envio de arquivos
+
+### 17.3 Diagrama de Atividades
+Mostrando o fluxo de trabalho para processos como:
+- Processo de login
+- Criação de grupo
+- Gerenciamento de permissões de grupo
+- Envio e recebimento de mensagens
+
+### 17.4 Diagrama de Colaboração
+Detalhando como os objetos interagem para realizar tarefas específicas:
+- Colaboração entre serviços para autenticação
+- Colaboração para notificações em tempo real
+
+## 18. Verificação de Requisitos
+
+A seguir, verificamos como a implementação proposta atende a cada um dos requisitos solicitados pelo professor:
+
+### 18.1 Autenticação Criptografada
+- **Implementado por**: `AuthService.java` e `SecurityUtils.java`
+- **Detalhes**: Senhas armazenadas com hash usando bcrypt, comunicação segura via SSL/TLS, tokens de sessão com expiração
+
+### 18.2 Lista de Usuários
+- **Implementado por**: `UserService.java` e `getUsers()` no frontend
+- **Detalhes**: Lista de usuários com status online/offline, cache implementado para evitar requisições repetidas
+
+### 18.3 Lista de Grupos
+- **Implementado por**: `GroupService.java` e `getGroups()` no frontend
+- **Detalhes**: Listagem de grupos, mecanismo de solicitação para entrar em grupos, aprovação pelo administrador
+
+### 18.4 Dois Modos de Chat
+- **Implementado por**: `MessageService.java` com métodos distintos para mensagens privadas e de grupo
+- **Detalhes**: Chat privado entre dois usuários e chat em grupo com múltiplos participantes, permissões de entrada controladas pelo administrador
+
+### 18.5 Envio de Arquivos
+- **Implementado por**: Métodos de envio de mensagens com suporte a arquivos
+- **Detalhes**: Envio de arquivos via mensagens privadas, com tratamento especial para diferentes tipos de arquivos
+
+### 18.6 Exclusão
+- **Implementado por**: `GroupService.java` com métodos de gerenciamento de usuários
+- **Detalhes**: Remoção de usuários de grupos pelo administrador, transferência de administração quando o administrador sai, opção de eliminar grupo
+
+### 18.7 Interface Intuitiva
+- **Implementado por**: Frontend React já desenvolvido e interface de administração do servidor
+- **Detalhes**: UI moderna com componentes reutilizáveis, feedback visual para ações, estados de carregamento
+
+### 18.8 Callbacks e Interfaces de Configuração
+- **Implementado por**: `NotificationService.java` e sistema de eventos
+- **Detalhes**: Callbacks RMI para notificações em tempo real, interface de configuração do servidor com parâmetros ajustáveis

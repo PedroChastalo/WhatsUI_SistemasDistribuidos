@@ -1,0 +1,19 @@
+// Permissões para o servidor WhatsUT
+grant {
+    // Permissões básicas para RMI
+    permission java.net.SocketPermission "*:1024-65535", "connect,accept,resolve";
+    permission java.net.SocketPermission "*:80", "connect";
+    
+    // Permissões para arquivos
+    permission java.io.FilePermission "${user.dir}/-", "read,write,delete,execute";
+    
+    // Permissões para propriedades do sistema
+    permission java.util.PropertyPermission "*", "read,write";
+    
+    // Permissões para threads
+    permission java.lang.RuntimePermission "modifyThread";
+    permission java.lang.RuntimePermission "modifyThreadGroup";
+    
+    // Permissões para reflexão
+    permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+};
