@@ -1,50 +1,96 @@
 {
-  "group-1": [
-    {
-      "messageId": "msg-1",
-      "senderId": "user-1",
-      "senderName": "Alice",
-      "receiverId": "group-1",
-      "content": "Bem-vindos ao grupo 1!",
-      "timestamp": 1718000000000,
-      "groupMessage": true,
-      "fileUrl": null,
-      "fileType": null
-    },
-    {
-      "messageId": "msg-2",
-      "senderId": "user-2",
-      "senderName": "Bob",
-      "receiverId": "group-1",
-      "content": "Olá Alice!",
-      "timestamp": 1718000005000,
-      "groupMessage": true,
-      "fileUrl": null,
-      "fileType": null
-    }
-  ],
-  "group-2": [
-    {
-      "messageId": "msg-3",
-      "senderId": "user-3",
-      "senderName": "Carol",
-      "receiverId": "group-2",
-      "content": "Esse é o grupo 2.",
-      "timestamp": 1718000010000,
-      "groupMessage": true,
-      "fileUrl": null,
-      "fileType": null
-    },
-    {
-      "messageId": "msg-4",
-      "senderId": "user-4",
-      "senderName": "Dave",
-      "receiverId": "group-2",
-      "content": "Oi Carol, tudo bem?",
-      "timestamp": 1718000015000,
-      "groupMessage": true,
-      "fileUrl": null,
-      "fileType": null
-    }
-  ]
+  "96f93304-49ae-4cd4-8a6c-01c98bfba894" : [ {
+    "messageId" : "7a97cef1-b01e-4588-9f0e-b6c764768817",
+    "senderId" : "system",
+    "senderName" : "Sistema",
+    "receiverId" : "96f93304-49ae-4cd4-8a6c-01c98bfba894",
+    "content" : "Teste1 criou o grupo",
+    "timestamp" : 1751304444015,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  }, {
+    "messageId" : "4a786c85-5725-4f96-ac68-f6af404f7e6b",
+    "senderId" : "cdeafc40-a463-4f72-9d33-e7e50e2dff5a",
+    "senderName" : "Teste1",
+    "receiverId" : "96f93304-49ae-4cd4-8a6c-01c98bfba894",
+    "content" : "Ola",
+    "timestamp" : 1751304454293,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  } ],
+  "2349970d-69b7-4d68-8276-ab9854023103" : [ {
+    "messageId" : "db156ee4-7493-4af4-9a69-60bd0aeaa6db",
+    "senderId" : "system",
+    "senderName" : "Sistema",
+    "receiverId" : "2349970d-69b7-4d68-8276-ab9854023103",
+    "content" : "Teste1 criou o grupo",
+    "timestamp" : 1751304752189,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  } ],
+  "4f96f58b-f369-4b10-9bbb-c634340773f5" : [ {
+    "messageId" : "1929d131-43b2-47b4-a538-5ccb17834f31",
+    "senderId" : "system",
+    "senderName" : "Sistema",
+    "receiverId" : "4f96f58b-f369-4b10-9bbb-c634340773f5",
+    "content" : "Pedro criou o grupo",
+    "timestamp" : 1751304859003,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  }, {
+    "messageId" : "cd6873c6-3d8d-4b48-85fb-47357856ffbe",
+    "senderId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
+    "senderName" : "Pedro",
+    "receiverId" : "4f96f58b-f369-4b10-9bbb-c634340773f5",
+    "content" : "Isso é um teste de mensagem",
+    "timestamp" : 1751304873408,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  }, {
+    "messageId" : "81a13b68-a85c-45ec-b7f6-1235066a8f27",
+    "senderId" : "791b23fa-47e3-4462-9544-07c4b6ae0aa2",
+    "senderName" : "Vitor",
+    "receiverId" : "4f96f58b-f369-4b10-9bbb-c634340773f5",
+    "content" : "oPA",
+    "timestamp" : 1751304894818,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  }, {
+    "messageId" : "c24c4eb2-3f92-42ce-8414-28b0d9a88c6b",
+    "senderId" : "791b23fa-47e3-4462-9544-07c4b6ae0aa2",
+    "senderName" : "Vitor",
+    "receiverId" : "4f96f58b-f369-4b10-9bbb-c634340773f5",
+    "content" : "Vai toma no cu rapa",
+    "timestamp" : 1751315527005,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  }, {
+    "messageId" : "7bdf99de-070e-4177-8e81-7402c5bc81ff",
+    "senderId" : "system",
+    "senderName" : "Sistema",
+    "receiverId" : "4f96f58b-f369-4b10-9bbb-c634340773f5",
+    "content" : "Vitor saiu do grupo",
+    "timestamp" : 1751315537646,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  } ],
+  "e725a53f-586d-4cc8-a560-be55157e8bcc" : [ {
+    "messageId" : "5405323a-8967-4a2d-9fc9-e5dbe118cac8",
+    "senderId" : "system",
+    "senderName" : "Sistema",
+    "receiverId" : "e725a53f-586d-4cc8-a560-be55157e8bcc",
+    "content" : "Vitor criou o grupo",
+    "timestamp" : 1751315576488,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  } ]
 }

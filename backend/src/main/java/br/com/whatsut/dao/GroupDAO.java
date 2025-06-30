@@ -159,6 +159,21 @@ public class GroupDAO {
     }
     
     /**
+     * Verifica se um usuário é membro de um grupo
+     * @param userId ID do usuário
+     * @param groupId ID do grupo
+     * @return true se o usuário for membro do grupo, false caso contrário
+     */
+    public boolean isUserInGroup(String userId, String groupId) {
+        Group group = groups.get(groupId);
+        if (group == null || userId == null) {
+            return false;
+        }
+        
+        return group.getMembers().contains(userId);
+    }
+    
+    /**
      * Exclui um grupo
      * @param groupId ID do grupo
      * @param requesterId ID do usuário que solicitou a exclusão

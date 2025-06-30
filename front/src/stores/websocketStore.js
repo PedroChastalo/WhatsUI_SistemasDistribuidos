@@ -23,9 +23,12 @@ const useWebSocketStore = create((set, get) => ({
   privateConversations: [],
   privateMessages: {},
   groups: [],
+  allGroups: [], // Todos os grupos no sistema
+  availableGroups: [], // Grupos que o usuário não é membro
   groupMessages: {},
   notifications: [],
   fetchError: null,
+  pendingGroupRequests: [], // Solicitações pendentes de entrada em grupos
 
   // Cache para evitar requisições repetidas
   cachedGroupMembers: {},
@@ -638,6 +641,69 @@ const useWebSocketStore = create((set, get) => ({
   },
 
   // Ações de grupos
+  fetchAllGroups: async () => {
+    try {
+      set({ isLoading: true, fetchError: null });
+      
+      // Verificar se o usuário está autenticado
+      const sessionId = get().sessionId;
+      if (!sessionId) {
+        throw new Error("Usuário não autenticado");
+      }
+      
+      // Enviar requisição para obter todos os grupos disponíveis
+      const response = await websocketClient.sendRequest("getGroups", { sessionId });
+      
+      // Validar resposta
+      if (!response || !Array.isArray(response)) {
+        throw new Error("Formato de resposta inválido ao buscar todos os grupos");
+      }
+      
+      // Atualizar estado
+      set({ allGroups: response, isLoading: false });
+      return response;
+    } catch (error) {
+      console.error("[WebSocketStore] Erro ao buscar todos os grupos:", error);
+      set({
+        isLoading: false,
+        fetchError: `Erro ao buscar todos os grupos: ${error.message || "Desconhecido"}`
+      });
+      throw error;
+    }
+  },
+  
+  // Buscar todos os grupos disponíveis (que o usuário não é membro)
+  fetchAllAvailableGroups: async () => {
+    try {
+      set({ isLoading: true, fetchError: null });
+      
+      // Verificar se o usuário está autenticado
+      const sessionId = get().sessionId;
+      if (!sessionId) {
+        throw new Error("Usuário não autenticado");
+      }
+      
+      // Enviar requisição para obter todos os grupos disponíveis
+      const response = await websocketClient.sendRequest("getAllAvailableGroups", { sessionId });
+      
+      // Validar resposta
+      if (!response || !Array.isArray(response)) {
+        throw new Error("Formato de resposta inválido ao buscar grupos disponíveis");
+      }
+      
+      // Atualizar estado
+      set({ availableGroups: response, isLoading: false });
+      return response;
+    } catch (error) {
+      console.error("[WebSocketStore] Erro ao buscar grupos disponíveis:", error);
+      set({
+        isLoading: false,
+        fetchError: `Erro ao buscar grupos disponíveis: ${error.message || "Desconhecido"}`
+      });
+      throw error;
+    }
+  },
+  
   fetchGroups: async () => {
     const { sessionId } = get();
     if (!sessionId) {
@@ -1001,12 +1067,31 @@ const useWebSocketStore = create((set, get) => ({
   },
 
   // Gerenciamento de grupos
-  createGroup: async (groupName, members = []) => {
+  createGroup: async (groupData) => {
     const { sessionId, currentUser } = get();
 
     // Validação de parâmetros
     if (!sessionId || !currentUser) {
       const errorMsg = "Sessão não encontrada";
+      console.error("createGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+    
+    // Suporte para formato antigo (string) e novo formato (objeto)
+    let groupName, members = [], description = "", deleteIfAdminLeaves = false;
+    
+    if (typeof groupData === 'string') {
+      // Formato antigo: apenas o nome do grupo
+      groupName = groupData;
+    } else if (typeof groupData === 'object') {
+      // Novo formato: objeto com propriedades
+      groupName = groupData.name;
+      members = groupData.members || [];
+      description = groupData.description || "";
+      deleteIfAdminLeaves = !!groupData.deleteIfAdminLeaves;
+    } else {
+      const errorMsg = "Formato de dados do grupo inválido";
       console.error("createGroup:", errorMsg);
       set({ fetchError: errorMsg });
       throw new Error(errorMsg);
@@ -1022,8 +1107,10 @@ const useWebSocketStore = create((set, get) => ({
     try {
       const response = await websocketClient.sendRequest("createGroup", {
         sessionId,
-        groupName: groupName.trim(),
+        name: groupName.trim(),
+        description: description,
         members: Array.isArray(members) ? members : [],
+        deleteIfAdminLeaves: deleteIfAdminLeaves
       });
 
       // Validar resposta
@@ -1041,10 +1128,12 @@ const useWebSocketStore = create((set, get) => ({
           {
             groupId: response.groupId,
             name: groupName.trim(),
+            description: description,
             createdBy: currentUser.userId,
             timestamp: response.timestamp || new Date().toISOString(),
             members: [currentUser.userId, ...members],
             admins: [currentUser.userId],
+            deleteIfAdminLeaves: deleteIfAdminLeaves,
           },
         ],
       }));
@@ -1057,242 +1146,7 @@ const useWebSocketStore = create((set, get) => ({
     }
   },
 
-  getGroupMembers: async (groupId) => {
-    const { sessionId, cachedGroupMembers } = get();
-
-    // Validação de parâmetros
-    if (!sessionId) {
-      const errorMsg = "Sessão não encontrada";
-      console.error("getGroupMembers:", errorMsg);
-      set({ fetchError: errorMsg });
-      throw new Error(errorMsg);
-    }
-
-    if (!groupId) {
-      const errorMsg = "ID do grupo não fornecido";
-      console.error("getGroupMembers:", errorMsg);
-      set({ fetchError: errorMsg });
-      throw new Error(errorMsg);
-    }
-
-    try {
-      // Verificar se já temos os membros em cache
-      if (
-        cachedGroupMembers[groupId] &&
-        cachedGroupMembers[groupId].length > 0
-      ) {
-        return cachedGroupMembers[groupId];
-      }
-
-      const response = await websocketClient.sendRequest("getGroupMembers", {
-        sessionId,
-        groupId,
-      });
-
-      // Verificar se a resposta é um array (formato direto) ou um objeto com propriedade members
-      let members = [];
-
-      if (Array.isArray(response)) {
-        // Resposta direta como array
-        members = response;
-      } else if (
-        response &&
-        response.members &&
-        Array.isArray(response.members)
-      ) {
-        // Resposta no formato esperado {members: [...]}
-        members = response.members;
-      } else {
-        const errorMsg = "Formato de resposta inválido do servidor";
-        console.warn(
-          "getGroupMembers: Resposta inesperada do servidor:",
-          response
-        );
-        set({ fetchError: errorMsg });
-        throw new Error(errorMsg);
-      }
-
-      // Atualizar cache de membros
-      set((state) => ({
-        cachedGroupMembers: {
-          ...state.cachedGroupMembers,
-          [groupId]: members,
-        },
-      }));
-
-      return members;
-    } catch (error) {
-      console.error(`Erro ao buscar membros do grupo ${groupId}:`, error);
-      set({ fetchError: `Erro ao buscar membros do grupo: ${error.message}` });
-      throw error;
-    }
-  },
-
-  addUserToGroup: async (groupId, userId) => {
-    const { sessionId, cachedGroupMembers } = get();
-
-    // Validação de parâmetros
-    if (!sessionId) {
-      const errorMsg = "Sessão não encontrada";
-      console.error("addUserToGroup:", errorMsg);
-      set({ fetchError: errorMsg });
-      throw new Error(errorMsg);
-    }
-
-    if (!groupId || !userId) {
-      const errorMsg = "Parâmetros inválidos";
-      console.error("addUserToGroup:", errorMsg, { groupId, userId });
-      set({ fetchError: errorMsg });
-      throw new Error(errorMsg);
-    }
-
-    try {
-      const response = await websocketClient.sendRequest("addUserToGroup", {
-        sessionId,
-        groupId,
-        userId,
-      });
-
-      // Validar resposta
-      if (!response || response.success !== true) {
-        const errorMsg =
-          response?.error || "Erro ao adicionar usuário ao grupo";
-        console.error("addUserToGroup:", errorMsg, response);
-        set({ fetchError: errorMsg });
-        throw new Error(errorMsg);
-      }
-
-      // Limpar cache de membros para forçar recarregamento
-      set((state) => ({
-        cachedGroupMembers: {
-          ...state.cachedGroupMembers,
-          [groupId]: [],
-        },
-      }));
-
-      return response;
-    } catch (error) {
-      console.error(
-        `Erro ao adicionar usuário ${userId} ao grupo ${groupId}:`,
-        error
-      );
-      set({
-        fetchError: `Erro ao adicionar usuário ao grupo: ${error.message}`,
-      });
-      throw error;
-    }
-  },
-
-  removeUserFromGroup: async (groupId, userId) => {
-    const { sessionId, cachedGroupMembers } = get();
-
-    // Validação de parâmetros
-    if (!sessionId) {
-      const errorMsg = "Sessão não encontrada";
-      console.error("removeUserFromGroup:", errorMsg);
-      set({ fetchError: errorMsg });
-      throw new Error(errorMsg);
-    }
-
-    if (!groupId || !userId) {
-      const errorMsg = "Parâmetros inválidos";
-      console.error("removeUserFromGroup:", errorMsg, { groupId, userId });
-      set({ fetchError: errorMsg });
-      throw new Error(errorMsg);
-    }
-
-    try {
-      const response = await websocketClient.sendRequest(
-        "removeUserFromGroup",
-        {
-          sessionId,
-          groupId,
-          userId,
-        }
-      );
-
-      // Validar resposta
-      if (!response || response.success !== true) {
-        const errorMsg = response?.error || "Erro ao remover usuário do grupo";
-        console.error("removeUserFromGroup:", errorMsg, response);
-        set({ fetchError: errorMsg });
-        throw new Error(errorMsg);
-      }
-
-      // Limpar cache de membros para forçar recarregamento
-      set((state) => ({
-        cachedGroupMembers: {
-          ...state.cachedGroupMembers,
-          [groupId]: [],
-        },
-      }));
-
-      return response;
-    } catch (error) {
-      console.error(
-        `Erro ao remover usuário ${userId} do grupo ${groupId}:`,
-        error
-      );
-      set({ fetchError: `Erro ao remover usuário do grupo: ${error.message}` });
-      throw error;
-    }
-  },
-
-  setGroupAdmin: async (groupId, userId) => {
-    const { sessionId, cachedGroupMembers } = get();
-
-    // Validação de parâmetros
-    if (!sessionId) {
-      const errorMsg = "Sessão não encontrada";
-      console.error("setGroupAdmin:", errorMsg);
-      set({ fetchError: errorMsg });
-      throw new Error(errorMsg);
-    }
-
-    if (!groupId || !userId) {
-      const errorMsg = "Parâmetros inválidos";
-      console.error("setGroupAdmin:", errorMsg, { groupId, userId });
-      set({ fetchError: errorMsg });
-      throw new Error(errorMsg);
-    }
-
-    try {
-      const response = await websocketClient.sendRequest("setGroupAdmin", {
-        sessionId,
-        groupId,
-        userId,
-      });
-
-      // Validar resposta
-      if (!response || response.success !== true) {
-        const errorMsg =
-          response?.error || "Erro ao definir administrador do grupo";
-        console.error("setGroupAdmin:", errorMsg, response);
-        set({ fetchError: errorMsg });
-        throw new Error(errorMsg);
-      }
-
-      // Limpar cache de membros para forçar recarregamento
-      set((state) => ({
-        cachedGroupMembers: {
-          ...state.cachedGroupMembers,
-          [groupId]: [],
-        },
-      }));
-
-      return response;
-    } catch (error) {
-      console.error(
-        `Erro ao definir usuário ${userId} como admin do grupo ${groupId}:`,
-        error
-      );
-      set({
-        fetchError: `Erro ao definir administrador do grupo: ${error.message}`,
-      });
-      throw error;
-    }
-  },
-
+  // Função para sair de um grupo
   leaveGroup: async (groupId) => {
     const { sessionId, currentUser, cachedGroupMembers } = get();
 
@@ -1346,6 +1200,160 @@ const useWebSocketStore = create((set, get) => ({
     }
   },
 
+  // Solicitar entrada em um grupo
+  requestJoinGroup: async (groupId) => {
+    try {
+      set({ isLoading: true, fetchError: null });
+      
+      // Verificar se o usuário está autenticado
+      const sessionId = get().sessionId;
+      if (!sessionId) {
+        throw new Error("Usuário não autenticado");
+      }
+      
+      // Verificar se o grupo existe
+      if (!groupId) {
+        throw new Error("ID do grupo não fornecido");
+      }
+      
+      // Enviar requisição para solicitar entrada no grupo
+      const response = await websocketClient.sendRequest("requestJoinGroup", {
+        sessionId,
+        groupId
+      });
+      
+      // Validar resposta
+      if (!response || !response.success) {
+        throw new Error(response?.error || "Erro ao solicitar entrada no grupo");
+      }
+      
+      set({ isLoading: false });
+      
+      // Adicionar notificação de sucesso
+      get().addNotification({
+        id: Date.now(),
+        title: "Solicitação enviada",
+        message: "Sua solicitação para entrar no grupo foi enviada ao administrador.",
+        type: "info",
+        timestamp: Date.now()
+      });
+      
+      return response;
+    } catch (error) {
+      console.error("[WebSocketStore] Erro ao solicitar entrada no grupo:", error);
+      set({
+        isLoading: false,
+        fetchError: `Erro ao solicitar entrada no grupo: ${error.message || "Desconhecido"}`
+      });
+      throw error;
+    }
+  },
+  
+  // Responder a uma solicitação de entrada em grupo (aprovar/rejeitar)
+  respondToGroupRequest: async (userId, groupId, accept) => {
+    try {
+      set({ isLoading: true, fetchError: null });
+      
+      // Verificar se o usuário está autenticado
+      const sessionId = get().sessionId;
+      if (!sessionId) {
+        throw new Error("Usuário não autenticado");
+      }
+      
+      // Verificar parâmetros
+      if (!userId || !groupId) {
+        throw new Error("Parâmetros incompletos");
+      }
+      
+      // Enviar requisição para responder à solicitação
+      const response = await websocketClient.sendRequest("respondJoinGroup", {
+        sessionId,
+        userId,
+        groupId,
+        accept
+      });
+      
+      // Validar resposta
+      if (!response || !response.success) {
+        throw new Error(response?.error || "Erro ao responder à solicitação");
+      }
+      
+      // Remover a solicitação da lista de pendentes
+      set(state => ({
+        pendingGroupRequests: state.pendingGroupRequests.filter(
+          req => !(req.userId === userId && req.groupId === groupId)
+        ),
+        isLoading: false
+      }));
+      
+      // Se aceitou, atualizar a lista de grupos
+      if (accept) {
+        await get().fetchGroups();
+      }
+      
+      return response;
+    } catch (error) {
+      console.error("[WebSocketStore] Erro ao responder à solicitação de grupo:", error);
+      set({
+        isLoading: false,
+        fetchError: `Erro ao responder à solicitação: ${error.message || "Desconhecido"}`
+      });
+      throw error;
+    }
+  },
+  
+  // Obter solicitações pendentes de entrada em grupo
+  // Nota: O backend não tem um endpoint específico para isso.
+  // As solicitações pendentes são enviadas automaticamente quando o usuário faz login.
+  fetchPendingGroupRequests: async () => {
+    try {
+      // Apenas retorna as solicitações pendentes que já estão no estado
+      const pendingRequests = get().pendingGroupRequests || [];
+      return pendingRequests;
+    } catch (error) {
+      console.error("[WebSocketStore] Erro ao acessar solicitações pendentes:", error);
+      return [];
+    }
+  },
+  
+  // Obter membros de um grupo
+  getGroupMembers: async (groupId) => {
+    try {
+      set({ isLoading: true, fetchError: null });
+      
+      // Verificar se o usuário está autenticado
+      const sessionId = get().sessionId;
+      if (!sessionId) {
+        throw new Error("Usuário não autenticado");
+      }
+      
+      if (!groupId) {
+        throw new Error("ID do grupo não fornecido");
+      }
+      
+      // Enviar requisição para obter membros do grupo
+      const response = await websocketClient.sendRequest("getGroupMembers", {
+        sessionId,
+        groupId
+      });
+      
+      // Validar resposta
+      if (!response || !Array.isArray(response)) {
+        throw new Error("Formato de resposta inválido ao buscar membros do grupo");
+      }
+      
+      set({ isLoading: false });
+      return response;
+    } catch (error) {
+      console.error(`[WebSocketStore] Erro ao buscar membros do grupo ${groupId}:`, error);
+      set({
+        isLoading: false,
+        fetchError: `Erro ao buscar membros do grupo: ${error.message || "Desconhecido"}`
+      });
+      return [];
+    }
+  },
+  
   deleteGroup: async (groupId) => {
     const { sessionId, cachedGroupMembers } = get();
 
@@ -1624,6 +1632,37 @@ const useWebSocketStore = create((set, get) => ({
         }
         break;
 
+      case "joinGroupRequest":
+        // Processar solicitação de entrada em grupo
+        if (data && data.groupId && data.userId && data.userName) {
+          // Adicionar à lista de solicitações pendentes
+          set(state => ({
+            pendingGroupRequests: [
+              ...state.pendingGroupRequests,
+              {
+                groupId: data.groupId,
+                userId: data.userId,
+                userName: data.userName,
+                timestamp: Date.now()
+              }
+            ]
+          }));
+          
+          // Adicionar notificação
+          get().addNotification({
+            id: Date.now(),
+            type: "groupRequest",
+            title: "Nova solicitação de grupo",
+            message: `${data.userName} quer entrar no seu grupo`,
+            timestamp: Date.now(),
+            data: {
+              groupId: data.groupId,
+              userId: data.userId
+            }
+          });
+        }
+        break;
+        
       case "error":
         // Processar erro recebido do servidor
         console.error("[WebSocketStore] Erro recebido do servidor:", data);
@@ -1631,9 +1670,11 @@ const useWebSocketStore = create((set, get) => ({
 
         // Adicionar notificação de erro
         get().addNotification({
+          id: Date.now(),
           type: "error",
+          title: "Erro",
           message: data?.message || "Ocorreu um erro no servidor",
-          variant: "destructive",
+          timestamp: Date.now()
         });
         break;
 

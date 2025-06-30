@@ -16,6 +16,7 @@ import org.java_websocket.server.WebSocketServer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import br.com.whatsut.service.AuthenticationService;
+import br.com.whatsut.security.SessionManager;
 import br.com.whatsut.service.UserService;
 import br.com.whatsut.service.MessageService;
 import br.com.whatsut.service.GroupService;
@@ -65,8 +66,15 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
             try {
                 if (authService.validateSession(sessionId)) {
                     sessions.put(conn, sessionId);
+                    // Obter o userId a partir da sessão
+                    String userId = SessionManager.getUserIdFromSession(sessionId);
+                    if (userId == null) {
+                        System.err.println("Sessão inválida: " + sessionId);
+                        return;
+                    }
+                    
                     // Enviar notificações pendentes se for admin
-                    User user = userService.getUserById(sessionId, null); // ajuste se necessário
+                    User user = userService.getUserById(sessionId, userId);
                     if (user != null) {
                         List<PendingJoinRequestDAO.JoinRequest> pendings = pendingJoinRequestDAO.getAndRemoveRequests(user.getUserId());
                         for (PendingJoinRequestDAO.JoinRequest req : pendings) {
@@ -159,6 +167,9 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
                 // Grupos
                 case "getGroups":
                     handleGetGroups(conn, response);
+                    break;
+                case "getAllAvailableGroups":
+                    handleGetAllAvailableGroups(conn, response);
                     break;
                 case "createGroup":
                     handleCreateGroup(conn, data, response);
@@ -458,6 +469,31 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         }
     }
     
+    /**
+     * Processa requisição para obter todos os grupos disponíveis (que o usuário não é membro)
+     * @param conn Conexão WebSocket
+     * @param response Mapa de resposta
+     * @throws Exception Erro ao processar requisição
+     */
+    private void handleGetAllAvailableGroups(WebSocket conn, Map<String, Object> response) throws Exception {
+        String sessionId = sessions.get(conn);
+        if (sessionId == null) {
+            response.put("success", false);
+            response.put("error", "Usuário não autenticado");
+            return;
+        }
+        
+        try {
+            List<Map<String, Object>> availableGroups = groupService.getAllAvailableGroups(sessionId);
+            response.put("success", true);
+            response.put("data", availableGroups);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Erro ao obter grupos disponíveis: " + e.getMessage());
+            throw e;
+        }
+    }
+    
     private void handleCreateGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -718,17 +754,37 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
             return;
         }
 
-        // Obtenha o usuário e o grupo
-        User user = userService.getUserById(sessionId, null); // ou ajuste para buscar pelo sessionId
-        Map<String, Object> group = groupService.getGroups(sessionId).stream()
-            .filter(g -> groupId.equals(g.get("groupId")))
-            .findFirst().orElse(null);
-        if (user == null || group == null) {
+        // Obtenha o userId a partir da sessão
+        String userId = SessionManager.getUserIdFromSession(sessionId);
+        if (userId == null) {
             response.put("success", false);
-            response.put("error", "Usuário ou grupo não encontrado");
+            response.put("error", "Sessão inválida");
             return;
         }
-        String adminId = (String) group.get("adminId");
+        
+        // Obtenha o usuário usando o userId correto
+        User user = userService.getUserById(sessionId, userId);
+        if (user == null) {
+            response.put("success", false);
+            response.put("error", "Usuário não encontrado");
+            return;
+        }
+        
+        // Buscar todos os grupos disponíveis para o usuário
+        List<Map<String, Object>> availableGroups = groupService.getAllAvailableGroups(sessionId);
+        
+        // Encontrar o grupo pelo ID entre os disponíveis
+        Map<String, Object> groupMap = availableGroups.stream()
+            .filter(g -> groupId.equals(g.get("groupId")))
+            .findFirst().orElse(null);
+            
+        if (groupMap == null) {
+            response.put("success", false);
+            response.put("error", "Grupo não encontrado ou você já é membro");
+            return;
+        }
+        
+        String adminId = (String) groupMap.get("adminId");
 
         // Verifique se o admin está online
         WebSocket adminConn = null;
@@ -740,16 +796,17 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         }
 
         PendingJoinRequestDAO.JoinRequest req = new PendingJoinRequestDAO.JoinRequest(
-            groupId, user.getUserId(), user.getDisplayName()
+            (String) groupMap.get("groupId"), user.getUserId(), user.getDisplayName()
         );
 
         if (adminConn != null) {
             // Admin online: envie notificação
             Map<String, Object> notify = new HashMap<>();
             notify.put("type", "joinGroupRequest");
-            notify.put("groupId", groupId);
+            notify.put("groupId", (String) groupMap.get("groupId"));
             notify.put("userId", user.getUserId());
             notify.put("userName", user.getDisplayName());
+            notify.put("groupName", (String) groupMap.get("name"));
             adminConn.send(objectMapper.writeValueAsString(notify));
         } else {
             // Admin offline: salve o pedido

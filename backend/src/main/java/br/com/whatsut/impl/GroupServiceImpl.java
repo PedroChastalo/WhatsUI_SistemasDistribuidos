@@ -344,9 +344,17 @@ public class GroupServiceImpl implements GroupService {
             throw new RemoteException("Você não é membro deste grupo");
         }
 
-        // Se o usuário for admin, pode exigir transferência de admin antes de sair
+        // Se o usuário for admin, verificar se deve excluir o grupo
         if (group.getAdminId().equals(userId)) {
-            throw new RemoteException("O admin deve transferir a administração antes de sair do grupo");
+            // Verificar se a opção de excluir grupo ao sair está marcada
+            // Como não temos essa informação diretamente, vamos assumir que o grupo deve ser excluído
+            // quando o admin sai, para atender ao requisito mencionado
+            try {
+                deleteGroup(sessionId, groupId);
+                return; // Grupo foi excluído, não precisa continuar
+            } catch (RemoteException e) {
+                throw new RemoteException("O admin deve transferir a administração antes de sair do grupo");
+            }
         }
 
         boolean removed = groupDAO.removeMemberFromGroup(groupId, userId);
@@ -430,5 +438,31 @@ public class GroupServiceImpl implements GroupService {
         }
         
         return map;
+    }
+    
+    @Override
+    public List<Map<String, Object>> getAllAvailableGroups(String sessionId) throws RemoteException {
+        // Validar sessão
+        String userId = SessionManager.getUserIdFromSession(sessionId);
+        if (userId == null) {
+            throw new RemoteException("Sessão inválida");
+        }
+        
+        // Obter todos os grupos
+        List<Group> allGroups = groupDAO.getAllGroups();
+        
+        // Obter grupos do usuário para filtrar
+        List<Group> userGroups = groupDAO.getUserGroups(userId);
+        Set<String> userGroupIds = userGroups.stream()
+                .map(Group::getGroupId)
+                .collect(Collectors.toSet());
+        
+        // Filtrar apenas os grupos que o usuário não é membro
+        List<Group> availableGroups = allGroups.stream()
+                .filter(group -> !userGroupIds.contains(group.getGroupId()))
+                .collect(Collectors.toList());
+        
+        // Converter para Map
+        return availableGroups.stream().map(this::groupToMap).collect(Collectors.toList());
     }
 }

@@ -44,11 +44,14 @@ export const WebSocketProvider = ({ children }) => {
     privateConversations: store.privateConversations,
     privateMessages: store.privateMessages,
     groups: store.groups,
+    allGroups: store.allGroups,
+    availableGroups: store.availableGroups,
     groupMessages: store.groupMessages,
     isLoading: store.isLoading,
     notifications: store.notifications,
     conversations: store.privateConversations,
     cachedGroupMembers: store.cachedGroupMembers,
+    pendingGroupRequests: store.pendingGroupRequests,
     
     // Estado de erros
     loginError: store.loginError,
@@ -82,13 +85,25 @@ export const WebSocketProvider = ({ children }) => {
     
     // Ações de grupos
     fetchGroups: store.fetchGroups,
+    fetchAllGroups: store.fetchAllGroups,
+    fetchAllAvailableGroups: store.fetchAllAvailableGroups,
     createGroup: store.createGroup,
     fetchGroupMessages: store.fetchGroupMessages,
     sendGroupMessage: store.sendGroupMessage,
     sendGroupFile: store.sendGroupFile,
     getGroups: store.fetchGroups,
+    getAllGroups: store.fetchAllGroups,
     getConversations: store.fetchPrivateConversations,
     clearGroupMembersCache: store.clearGroupMembersCache,
+    
+    // Ações de solicitações de grupo
+    requestJoinGroup: store.requestJoinGroup,
+    respondToGroupRequest: store.respondToGroupRequest,
+    fetchPendingGroupRequests: store.fetchPendingGroupRequests,
+    getPendingGroupRequests: store.fetchPendingGroupRequests,
+    
+    // Membros do grupo
+    getGroupMembers: store.getGroupMembers,
     
     // Funções para o componente Chat
     getMessages: async (chatId, chatType) => {

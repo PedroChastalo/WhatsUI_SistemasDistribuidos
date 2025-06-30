@@ -642,17 +642,18 @@ export default function Chat({ chat, onBack }) {
                           {isOwn && (
                             <span className="ml-1">
                               {msg.status === "sending" && (
-                                <Loader2 size={12} className="animate-spin" />
+                                <Loader2 key={`${msg.id || index}-sending`} size={12} className="animate-spin" />
                               )}
-                              {msg.status === "sent" && <Check size={12} />}
+                              {msg.status === "sent" && <Check key={`${msg.id || index}-sent`} size={12} />}
                               {msg.status === "delivered" && (
-                                <Check size={12} />
+                                <Check key={`${msg.id || index}-delivered`} size={12} />
                               )}
                               {msg.status === "read" && (
-                                <CheckCheck size={12} />
+                                <CheckCheck key={`${msg.id || index}-read`} size={12} />
                               )}
                               {msg.status === "failed" && (
                                 <AlertCircle
+                                  key={`${msg.id || index}-failed`}
                                   size={12}
                                   className="text-red-500"
                                 />
@@ -731,7 +732,7 @@ export default function Chat({ chat, onBack }) {
               <div className="space-y-2">
                 {participants.map((participant) => (
                   <div
-                    key={participant.id}
+                    key={participant.userId || participant.id}
                     className="flex items-center justify-between p-3 bg-white rounded-lg"
                   >
                     <div className="flex items-center space-x-3">

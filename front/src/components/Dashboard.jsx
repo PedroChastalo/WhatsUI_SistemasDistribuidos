@@ -3,28 +3,37 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Search, Plus, MessageCircle, Users, Settings, LogOut, AlertCircle } from 'lucide-react'
+import { Search, Plus, MessageCircle, Users, Settings, LogOut, AlertCircle, Bell, UserPlus } from 'lucide-react'
 import CreateGroupModal from './CreateGroupModal'
 import { useWebSocket } from '@/contexts/WebSocketContext'
+import GroupRequestsModal from './GroupRequestsModal'
 
 export default function Dashboard({ onSelectChat, onLogout }) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedTab, setSelectedTab] = useState('recent') // Apenas 'recent' e 'groups' agora
+  const [selectedTab, setSelectedTab] = useState('recent') // 'recent', 'groups' e 'available' agora
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false)
+  const [showRequestsModal, setShowRequestsModal] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   
-  // Usar o contexto WebSocket
+  // Estado do WebSocket
   const { 
     currentUser, 
     users, 
     groups, 
+    allGroups,
+    availableGroups,
     conversations, 
+    pendingGroupRequests,
     getUsers, 
     getGroups, 
     getConversations,
+    getPendingGroupRequests,
     createGroup,
-    logout
+    requestJoinGroup,
+    respondToGroupRequest,
+    logout,
+    fetchAllAvailableGroups
   } = useWebSocket()
   
   // Carregar dados ao montar o componente
@@ -36,8 +45,12 @@ export default function Dashboard({ onSelectChat, onLogout }) {
         await Promise.all([
           getUsers(),
           getGroups(),
-          getConversations()
+          getConversations(),
+          fetchAllAvailableGroups() // Buscar grupos disponíveis
         ])
+        
+        // Obter solicitações pendentes (não é mais uma chamada de API)
+        getPendingGroupRequests()
       } catch (err) {
         setError('Erro ao carregar dados: ' + (err.message || 'Desconhecido'))
       } finally {
@@ -56,6 +69,25 @@ export default function Dashboard({ onSelectChat, onLogout }) {
       setShowCreateGroupModal(false)
     } catch (err) {
       setError('Erro ao criar grupo: ' + (err.message || 'Desconhecido'))
+    }
+  }
+  
+  // Função para solicitar entrada em um grupo
+  const handleRequestJoinGroup = async (groupId) => {
+    try {
+      await requestJoinGroup(groupId)
+    } catch (err) {
+      setError('Erro ao solicitar entrada no grupo: ' + (err.message || 'Desconhecido'))
+    }
+  }
+  
+  // Função para responder a uma solicitação de entrada em grupo
+  const handleRespondToRequest = async (userId, groupId, accept) => {
+    try {
+      await respondToGroupRequest(userId, groupId, accept)
+      setShowRequestsModal(false)
+    } catch (err) {
+      setError('Erro ao responder à solicitação: ' + (err.message || 'Desconhecido'))
     }
   }
   
@@ -116,16 +148,44 @@ export default function Dashboard({ onSelectChat, onLogout }) {
       return (a.displayName || a.username || '').localeCompare(b.displayName || b.username || '');
     });
 
-  // Filtrar grupos
+  // Filtrar grupos do usuário
   const filteredGroups = groups
     .filter(group => group.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    
+  // Filtrar grupos disponíveis pelo termo de busca
+  const filteredAvailableGroups = availableGroups
+    ? availableGroups.filter(group => group.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : []
+    
+  // Verificar se há solicitações pendentes
+  const hasRequests = pendingGroupRequests && pendingGroupRequests.length > 0
 
   return (
     <div className="h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-        {/* Header do usuário */}
+        {/* Cabeçalho */}
         <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">WhatsUT</h2>
+            <div className="flex space-x-2">
+              {hasRequests && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setShowRequestsModal(true)} 
+                  title="Solicitações de grupo"
+                  className="relative"
+                >
+                  <Bell size={18} />
+                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
+                <LogOut size={18} />
+              </Button>
+            </div>
+          </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Avatar className="h-10 w-10">
@@ -138,10 +198,8 @@ export default function Dashboard({ onSelectChat, onLogout }) {
                 <p className="text-sm text-green-600">Online</p>
               </div>
             </div>
+            {/* Área para botões adicionais se necessário */}
             <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut size={16} />
-              </Button>
             </div>
           </div>
         </div>
@@ -159,30 +217,26 @@ export default function Dashboard({ onSelectChat, onLogout }) {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="px-4">
-          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-            <button
-              onClick={() => setSelectedTab('recent')}
-              className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                selectedTab === 'recent'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Recentes
-            </button>
-            <button
-              onClick={() => setSelectedTab('groups')}
-              className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-colors ${
-                selectedTab === 'groups'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Grupos
-            </button>
-          </div>
+        {/* Abas */}
+        <div className="flex border border-gray-200 rounded-md overflow-hidden">
+          <button
+            className={`flex-1 py-2 text-sm font-medium ${selectedTab === 'recent' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            onClick={() => setSelectedTab('recent')}
+          >
+            Recentes
+          </button>
+          <button
+            className={`flex-1 py-2 text-sm font-medium ${selectedTab === 'groups' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            onClick={() => setSelectedTab('groups')}
+          >
+            Meus Grupos
+          </button>
+          <button
+            className={`flex-1 py-2 text-sm font-medium ${selectedTab === 'available' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            onClick={() => setSelectedTab('available')}
+          >
+            Disponíveis
+          </button>
         </div>
 
         {/* Área de conteúdo */}
@@ -214,7 +268,7 @@ export default function Dashboard({ onSelectChat, onLogout }) {
               ) : (
                 filteredChats.map((chat) => (
                   <div
-                    key={chat.id}
+                    key={chat.userId || chat.id || `chat-${Math.random()}`}
                     onClick={() => onSelectChat(chat)}
                     className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                   >
@@ -242,18 +296,18 @@ export default function Dashboard({ onSelectChat, onLogout }) {
           {!isLoading && selectedTab === 'groups' && (
             <div className="space-y-2">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-gray-700">Grupos ({filteredGroups.length})</h4>
+                <h4 className="text-sm font-medium text-gray-700">Meus Grupos ({filteredGroups.length})</h4>
                 <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => setShowCreateGroupModal(true)}>
                   <Plus size={16} className="mr-1" />
                   Novo
                 </Button>
               </div>
               {filteredGroups.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Nenhum grupo encontrado</p>
+                <p className="text-gray-500 text-center py-4">Você não participa de nenhum grupo</p>
               ) : (
                 filteredGroups.map((group) => (
                   <div
-                    key={group.id}
+                    key={group.groupId}
                     onClick={() => onSelectChat({ ...group, type: 'group' })}
                     className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                   >
@@ -278,6 +332,52 @@ export default function Dashboard({ onSelectChat, onLogout }) {
               )}
             </div>
           )}
+          
+          {!isLoading && selectedTab === 'available' && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-gray-700">Grupos Disponíveis ({filteredAvailableGroups.length})</h4>
+              </div>
+              
+              {filteredAvailableGroups.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">Nenhum grupo disponível para entrar</p>
+              ) : (
+                <div className="space-y-2">
+                  {filteredAvailableGroups.map((group) => (
+                    <div
+                      key={group.groupId}
+                      className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
+                    >
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-gray-100 text-gray-600">
+                          <Users size={20} />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-gray-900 truncate">{group.name}</h4>
+                          <Button
+                            variant="outline" 
+                            className="h-8 w-8 p-0 rounded-full flex items-center justify-center"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRequestJoinGroup(group.groupId);
+                            }}
+                            title="Solicitar entrada"
+                          >
+                            <Plus size={16} />
+                          </Button>
+                        </div>
+                        <p className="text-sm text-gray-600 truncate">
+                          {group.members ? group.members.length : 0} membros
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -299,6 +399,13 @@ export default function Dashboard({ onSelectChat, onLogout }) {
         isOpen={showCreateGroupModal}
         onClose={() => setShowCreateGroupModal(false)}
         onCreateGroup={handleCreateGroup}
+      />
+      
+      <GroupRequestsModal
+        isOpen={showRequestsModal}
+        onClose={() => setShowRequestsModal(false)}
+        requests={pendingGroupRequests}
+        onRespond={handleRespondToRequest}
       />
     </div>
   )

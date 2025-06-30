@@ -90,6 +90,14 @@ public interface GroupService extends Remote {
      * @throws RemoteException Erro RMI
      */
     void leaveGroup(String sessionId, String groupId) throws RemoteException;
+    
+    /**
+     * Obtém todos os grupos disponíveis no sistema
+     * @param sessionId ID da sessão do usuário autenticado
+     * @return Lista de todos os grupos
+     * @throws RemoteException Erro RMI
+     */
+    List<Map<String, Object>> getAllAvailableGroups(String sessionId) throws RemoteException;
 
     /**
      * Exclui um grupo
