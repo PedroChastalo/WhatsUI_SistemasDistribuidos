@@ -69,17 +69,52 @@ export default function Dashboard({ onSelectChat, onLogout }) {
     }
   }
 
-  // Filtrar conversas recentes
-  const recentChats = [...(conversations || [])]
-  const filteredChats = recentChats
+  // Combinar usuários e conversas recentes
+  // Primeiro, vamos criar um mapa de conversas existentes por userId
+  const conversationMap = {};
+  (conversations || []).forEach(chat => {
+    if (chat.userId) {
+      conversationMap[chat.userId] = chat;
+    }
+  });
+  
+  // Agora, vamos criar uma lista combinada de todos os usuários
+  // Se um usuário já tem uma conversa, usamos os dados da conversa
+  // Caso contrário, criamos uma entrada para o usuário
+  const allUsers = users.map(user => {
+    // Não mostrar o usuário atual na lista
+    if (user.userId === currentUser?.userId) return null;
+    
+    // Se já existe uma conversa com este usuário, use os dados da conversa
+    if (conversationMap[user.userId]) {
+      return conversationMap[user.userId];
+    }
+    
+    // Caso contrário, crie uma entrada para o usuário
+    return {
+      ...user,
+      type: 'private',
+      lastMessage: 'Iniciar conversa',
+      timestamp: null
+    };
+  }).filter(Boolean); // Remove entradas nulas (usuário atual)
+  
+  // Filtrar e ordenar a lista combinada
+  const filteredChats = allUsers
     .filter(chat => {
-      // Usar displayName ou username para conversas privadas
       const searchName = chat?.displayName || chat?.username || '';
       return searchName.toLowerCase().includes(searchQuery.toLowerCase());
     })
-    .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
-
-  // Removida a filtragem de usuários online conforme solicitado
+    .sort((a, b) => {
+      // Primeiro ordenar por timestamp (conversas com mensagens primeiro)
+      if (a.timestamp && !b.timestamp) return -1;
+      if (!a.timestamp && b.timestamp) return 1;
+      if (a.timestamp && b.timestamp) {
+        return new Date(b.timestamp) - new Date(a.timestamp);
+      }
+      // Se ambos não têm timestamp, ordenar por nome
+      return (a.displayName || a.username || '').localeCompare(b.displayName || b.username || '');
+    });
 
   // Filtrar grupos
   const filteredGroups = groups
@@ -173,7 +208,7 @@ export default function Dashboard({ onSelectChat, onLogout }) {
           {/* Conversas recentes */}
           {!isLoading && selectedTab === 'recent' && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Conversas Recentes ({filteredChats.length})</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Usuários ({filteredChats.length})</h4>
               {filteredChats.length === 0 ? (
                 <p className="text-gray-500 text-center py-4">Nenhuma conversa recente</p>
               ) : (

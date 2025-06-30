@@ -25,7 +25,7 @@ export const WebSocketProvider = ({ children }) => {
   // Inicializar WebSocket na montagem do componente
   useEffect(() => {
     // Iniciar conexão WebSocket
-    websocketClient.connect();
+    store.initializeWebSocket();
     
     // Limpar na desmontagem
     return () => {
@@ -48,6 +48,21 @@ export const WebSocketProvider = ({ children }) => {
     isLoading: store.isLoading,
     notifications: store.notifications,
     conversations: store.privateConversations,
+    cachedGroupMembers: store.cachedGroupMembers,
+    
+    // Estado de erros
+    loginError: store.loginError,
+    fetchError: store.fetchError,
+    connectionError: store.connectionError,
+    
+    // Funções de gerenciamento de cache
+    clearGroupMessageCache: store.clearGroupMessageCache,
+    clearPrivateMessageCache: store.clearPrivateMessageCache,
+    
+    // Funções para gerenciamento de notificações
+    addNotification: store.addNotification,
+    clearNotification: store.clearNotification,
+    clearAllNotifications: store.clearAllNotifications,
     
     // Ações de autenticação
     login: store.login,
@@ -57,7 +72,6 @@ export const WebSocketProvider = ({ children }) => {
     // Ações de usuários
     fetchUsers: store.fetchUsers,
     updateStatus: store.updateStatus,
-    getUser: store.getUser || ((userId) => store.users.find(u => u.userId === userId)),
     getUsers: store.fetchUsers,
     
     // Ações de mensagens privadas
@@ -74,55 +88,181 @@ export const WebSocketProvider = ({ children }) => {
     sendGroupFile: store.sendGroupFile,
     getGroups: store.fetchGroups,
     getConversations: store.fetchPrivateConversations,
+    clearGroupMembersCache: store.clearGroupMembersCache,
     
     // Funções para o componente Chat
-    getMessages: (chatId, chatType) => {
-      if (chatType === 'user') {
-        return store.fetchPrivateMessages(chatId);
-      } else if (chatType === 'group') {
-        return store.fetchGroupMessages(chatId);
+    getMessages: async (chatId, chatType) => {
+      if (!chatId) {
+        console.error('getMessages chamado sem chatId');
+        return [];
       }
-      return [];
-    },
-    sendMessage: (message) => {
-      if (message.type === 'user') {
-        return store.sendPrivateMessage(message.recipientId, message.content);
-      } else if (message.type === 'group') {
-        return store.sendGroupMessage(message.recipientId, message.content);
+      
+      try {
+        // Se chatType não for fornecido, assumir que é um chat privado (user)
+        const normalizedType = chatType || 'user';
+        
+        if (normalizedType === 'user' || normalizedType === 'private') {
+          console.log(`Buscando mensagens privadas para usuário ${chatId}`);
+          return await store.fetchPrivateMessages(chatId);
+        } else if (normalizedType === 'group') {
+          console.log(`Buscando mensagens de grupo para ${chatId}`);
+          return await store.fetchGroupMessages(chatId);
+        } else {
+          console.warn(`Tipo de chat desconhecido: ${normalizedType}, assumindo chat privado`);
+          return await store.fetchPrivateMessages(chatId);
+        }
+      } catch (error) {
+        console.error(`Erro ao buscar mensagens para ${chatType || 'user'} ${chatId}:`, error);
+        return [];
       }
-      return null;
     },
-    sendFile: (file, recipientId, type, fileType) => {
-      if (type === 'user') {
-        return store.sendPrivateFile(recipientId, file, fileType);
-      } else if (type === 'group') {
-        return store.sendGroupFile(recipientId, file, fileType);
+    sendMessage: async (message) => {
+      if (!message || !message.recipientId || !message.content) {
+        console.error('sendMessage chamado com parâmetros inválidos:', message);
+        throw new Error('Parâmetros inválidos para enviar mensagem');
       }
-      return Promise.reject(new Error('Tipo de chat inválido'));
+      
+      try {
+        // Usar o recipientId como userId para mensagens privadas
+        // ou como groupId para mensagens de grupo
+        if (message.type === 'user') {
+          // Passar o recipientId como userId para o método sendPrivateMessage
+          return await store.sendPrivateMessage(message.recipientId, message.content);
+        } else if (message.type === 'group') {
+          return await store.sendGroupMessage(message.recipientId, message.content);
+        } else {
+          console.error(`Tipo de destinatário inválido: ${message.type}`);
+          throw new Error(`Tipo de destinatário inválido: ${message.type}`);
+        }
+      } catch (error) {
+        console.error(`Erro ao enviar mensagem para ${message.type} ${message.recipientId}:`, error);
+        throw error; // Propagar o erro para que o componente possa mostrar feedback ao usuário
+      }
     },
-    sendTypingStatus: () => {}, // Implementação futura
-    getGroupMembers: (groupId) => {
-      return store.getGroupMembers(groupId);
-    },
-    addUserToGroup: (groupId, userId) => {
-      return store.addUserToGroup ? store.addUserToGroup(groupId, userId) : Promise.resolve({ success: true });
-    },
-    removeUserFromGroup: (groupId, userId) => {
-      return store.removeUserFromGroup ? store.removeUserFromGroup(groupId, userId) : Promise.resolve({ success: true });
-    },
-    setGroupAdmin: (groupId, userId) => {
-      return store.setGroupAdmin ? store.setGroupAdmin(groupId, userId) : Promise.resolve({ success: true });
-    },
-    leaveGroup: (groupId, deleteIfAdmin = false) => {
-      return store.leaveGroup ? store.leaveGroup(groupId, deleteIfAdmin) : Promise.resolve({ success: true });
-    },
-    deleteGroup: (groupId) => {
-      return store.deleteGroup ? store.deleteGroup(groupId) : Promise.resolve({ success: true });
+    sendFile: async (file, recipientId, type, fileType) => {
+      if (!file || !recipientId || !type) {
+        console.error('sendFile chamado com parâmetros inválidos:', { file, recipientId, type });
+        throw new Error('Parâmetros inválidos para enviar arquivo');
+      }
+      
+      try {
+        if (type === 'user') {
+          return await store.sendPrivateFile(recipientId, file, fileType);
+        } else if (type === 'group') {
+          return await store.sendGroupFile(recipientId, file, fileType);
+        } else {
+          console.error(`Tipo de destinatário inválido: ${type}`);
+          throw new Error(`Tipo de destinatário inválido: ${type}`);
+        }
+      } catch (error) {
+        console.error(`Erro ao enviar arquivo para ${type} ${recipientId}:`, error);
+        throw error; // Propagar o erro para que o componente possa mostrar feedback ao usuário
+      }
     },
     
-    // Notificações
-    removeNotification: store.removeNotification,
-    clearNotifications: store.clearNotifications,
+    // A função sendTypingStatus foi removida
+    
+    getGroupMembers: async (groupId) => {
+      if (!groupId) {
+        console.error('getGroupMembers chamado sem groupId');
+        return [];
+      }
+      
+      try {
+        return await store.getGroupMembers(groupId);
+      } catch (error) {
+        console.error(`Erro ao buscar membros do grupo ${groupId}:`, error);
+        return [];
+      }
+    },
+    
+    addUserToGroup: async (groupId, userId) => {
+      if (!groupId || !userId) {
+        console.error('addUserToGroup chamado com parâmetros inválidos:', { groupId, userId });
+        throw new Error('Parâmetros inválidos para adicionar usuário ao grupo');
+      }
+      
+      try {
+        return await store.addUserToGroup(groupId, userId);
+      } catch (error) {
+        console.error(`Erro ao adicionar usuário ${userId} ao grupo ${groupId}:`, error);
+        throw error;
+      }
+    },
+    
+    removeUserFromGroup: async (groupId, userId) => {
+      if (!groupId || !userId) {
+        console.error('removeUserFromGroup chamado com parâmetros inválidos:', { groupId, userId });
+        throw new Error('Parâmetros inválidos para remover usuário do grupo');
+      }
+      
+      try {
+        return await store.removeUserFromGroup(groupId, userId);
+      } catch (error) {
+        console.error(`Erro ao remover usuário ${userId} do grupo ${groupId}:`, error);
+        throw error;
+      }
+    },
+    
+    setGroupAdmin: async (groupId, userId) => {
+      if (!groupId || !userId) {
+        console.error('setGroupAdmin chamado com parâmetros inválidos:', { groupId, userId });
+        throw new Error('Parâmetros inválidos para definir administrador do grupo');
+      }
+      
+      try {
+        return await store.setGroupAdmin(groupId, userId);
+      } catch (error) {
+        console.error(`Erro ao definir usuário ${userId} como admin do grupo ${groupId}:`, error);
+        throw error;
+      }
+    },
+    leaveGroup: async (groupId, deleteIfAdmin = false) => {
+      if (!groupId) {
+        console.error('leaveGroup chamado sem groupId');
+        throw new Error('Parâmetros inválidos para sair do grupo');
+      }
+      
+      try {
+        // Se deleteIfAdmin for true, chamar deleteGroup em vez de leaveGroup
+        if (deleteIfAdmin) {
+          return await store.deleteGroup(groupId);
+        } else {
+          return await store.leaveGroup(groupId);
+        }
+      } catch (error) {
+        console.error(`Erro ao sair do grupo ${groupId}:`, error);
+        throw error;
+      }
+    },
+    
+    deleteGroup: async (groupId) => {
+      if (!groupId) {
+        console.error('deleteGroup chamado sem groupId');
+        throw new Error('Parâmetros inválidos para deletar grupo');
+      }
+      
+      try {
+        return await store.deleteGroup(groupId);
+      } catch (error) {
+        console.error(`Erro ao deletar grupo ${groupId}:`, error);
+        throw error;
+      }
+    },
+    
+    getUser: async (userId) => {
+      if (!userId) {
+        console.error('getUser chamado sem userId');
+        throw new Error('ID de usuário não fornecido');
+      }
+      
+      try {
+        return await store.getUser(userId);
+      } catch (error) {
+        console.error(`Erro ao buscar usuário ${userId}:`, error);
+        throw error;
+      }
+    },
     
     // Acesso direto ao cliente WebSocket para casos especiais
     websocketClient

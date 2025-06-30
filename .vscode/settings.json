@@ -1,5 +1,4 @@
 {
-    "i18n-ally.localesPaths": [
-        "backend/data/messages"
-    ]
+  "i18n-ally.localesPaths": ["backend/data/messages"],
+  "java.configuration.updateBuildConfiguration": "interactive"
 }

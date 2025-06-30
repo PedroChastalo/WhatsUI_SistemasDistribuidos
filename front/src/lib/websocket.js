@@ -2,7 +2,6 @@
 // Este cliente gerencia a conexão WebSocket e fornece métodos para enviar e receber mensagens
 
 import { v4 as uuidv4 } from 'uuid';
-import { useWebSocketStore } from '@/stores/websocketStore';
 
 class WebSocketClient {
   constructor() {
@@ -18,10 +17,11 @@ class WebSocketClient {
     this.eventListeners = new Map();
     this.mockMode = false; // Desativando o modo mock para usar o backend real
     this.url = 'ws://localhost:8080/whatsut';
+    this.globalEventHandler = null;
   }
 
   // Conectar ao servidor WebSocket
-  connect(url) {
+  connect(url, sessionId) {
     // Atualizar URL se fornecida
     if (url) {
       this.url = url;
@@ -48,12 +48,12 @@ class WebSocketClient {
       
       // Se já estiver conectado ou conectando, não fazer nada
       if (currentState === WebSocket.OPEN) {
-        console.log('[WebSocket] Já existe uma conexão ativa');
+        // Removido log de conexão ativa
         return;
       }
       
       if (currentState === WebSocket.CONNECTING) {
-        console.log('[WebSocket] Conexão já está em andamento');
+        // Removido log de conexão em andamento
         return;
       }
       
@@ -66,21 +66,18 @@ class WebSocketClient {
     }
 
     try {
-      // Obter o sessionId do store se disponível
-      const sessionId = useWebSocketStore.getState().sessionId;
-      
       // Construir a URL com o token de sessão se disponível
       let connectionUrl = this.url;
       if (sessionId) {
         // Adicionar o token como parâmetro de query
         const separator = connectionUrl.includes('?') ? '&' : '?';
         connectionUrl = `${connectionUrl}${separator}sessionId=${sessionId}`;
-        console.log(`[WebSocket] Conectando com sessionId: ${sessionId}`);
+        console.log(`[WebSocket] Conectando com sessionId`);
       } else {
-        console.log('[WebSocket] Conectando sem sessionId (apenas para login/registro)');
+        console.log('[WebSocket] Conectando sem sessionId');
       }
       
-      console.log(`[WebSocket] Tentando conectar a ${connectionUrl}`);
+      // Conexão simplificada, sem mostrar a URL completa
       this.socket = new WebSocket(connectionUrl);
 
       this.socket.onopen = this.onOpen.bind(this);
@@ -98,7 +95,9 @@ class WebSocketClient {
     console.log('[WebSocket] Conexão estabelecida');
     this.isConnected = true;
     this.reconnectAttempts = 0;
-    useWebSocketStore.getState().setConnectionStatus(true);
+    
+    // Notificar sobre mudança de status de conexão
+    this.dispatchEvent('connectionChange', true);
     
     // Iniciar heartbeat para manter a conexão ativa
     this.startHeartbeat();
@@ -107,7 +106,7 @@ class WebSocketClient {
     try {
       this.socket.send(JSON.stringify({ type: 'ping' }));
     } catch (error) {
-      console.warn('[WebSocket] Erro ao enviar ping inicial:', error);
+      console.warn('[WebSocket] Erro ao enviar ping inicial');
     }
   }
   
@@ -119,19 +118,18 @@ class WebSocketClient {
     this.heartbeatInterval = setInterval(() => {
       if (this.isConnected && this.socket && this.socket.readyState === WebSocket.OPEN) {
         try {
-          console.log('[WebSocket] Enviando heartbeat ping');
           this.socket.send(JSON.stringify({ type: 'ping' }));
           
           // Definir um timeout para verificar se recebemos resposta
           this.heartbeatTimeout = setTimeout(() => {
-            console.warn('[WebSocket] Heartbeat timeout - sem resposta do servidor');
-            // Se não recebemos resposta, a conexão pode estar quebrada
-            this.socket.close();
-          }, 5000); // 5 segundos para resposta
+            console.warn('[WebSocket] Timeout de ping, reconectando...');
+            this.reconnect();
+          }, 5000); // Esperar 5 segundos pela resposta
         } catch (error) {
-          console.error('[WebSocket] Erro ao enviar heartbeat:', error);
           this.reconnect();
         }
+      } else {
+        this.reconnect();
       }
     }, 30000); // 30 segundos
   }
@@ -152,16 +150,16 @@ class WebSocketClient {
   onClose(event) {
     console.log(`[WebSocket] Conexão fechada: ${event.code} ${event.reason || 'Sem motivo'}`);
     this.isConnected = false;
-    useWebSocketStore.getState().setConnectionStatus(false);
-    
-    // Parar o heartbeat quando a conexão for fechada
     this.stopHeartbeat();
     
-    // Não tentar reconectar se o fechamento foi limpo (código 1000)
-    if (event.code !== 1000 || !event.wasClean) {
+    // Notificar sobre mudança de status de conexão
+    this.dispatchEvent('connectionChange', false);
+    
+    if (event && event.code !== 1000) {
+      console.warn(`[WebSocket] Conexão fechada com código: ${event.code}, razão: ${event.reason || 'Desconhecida'}`);
       this.attemptReconnect();
     } else {
-      console.log('[WebSocket] Fechamento limpo, não tentando reconectar automaticamente');
+      console.log('[WebSocket] Conexão fechada normalmente');
     }
   }
   
@@ -175,7 +173,7 @@ class WebSocketClient {
   
   onError(error) {
     console.error('[WebSocket] Erro na conexão:', error);
-    useWebSocketStore.getState().setConnectionStatus(false);
+    this.dispatchEvent('connectionChange', false);
     // Não precisamos chamar attemptReconnect() aqui porque onClose será chamado automaticamente após um erro
   }
   
@@ -183,13 +181,13 @@ class WebSocketClient {
   simulateConnection() {
     setTimeout(() => {
       this.isConnected = true;
-      useWebSocketStore.getState().setConnectionStatus(true);
+      this.dispatchEvent('connectionChange', true);
       console.log('[WebSocket Mock] Conexão simulada estabelecida.');
     }, 500);
   }
 
   // Reconectar imediatamente
-  reconnect() {
+  reconnect(sessionId) {
     console.log('[WebSocket] Reconectando imediatamente...');
     
     // Limpar qualquer temporizador de reconexão existente
@@ -209,8 +207,11 @@ class WebSocketClient {
     
     // Pequeno delay para garantir que a conexão anterior foi fechada
     setTimeout(() => {
-      this.connect();
+      this.connect(null, sessionId);
     }, 100);
+    
+    // Retornar uma promise que resolve quando a conexão for estabelecida
+    return this.waitForConnection();
   }
   
   // Tentar reconectar automaticamente com backoff exponencial
@@ -324,17 +325,17 @@ class WebSocketClient {
       
       // Lidar com mensagens de ping/pong para manter a conexão ativa
       if (message.type === 'ping') {
-        console.log('[WebSocket] Ping recebido, enviando pong');
+        // Removido log de ping
         try {
           this.socket.send(JSON.stringify({ type: 'pong' }));
         } catch (error) {
-          console.warn('[WebSocket] Erro ao enviar pong:', error);
+          // Removido log de erro pong
         }
         return;
       }
       
       if (message.type === 'pong') {
-        console.log('[WebSocket] Pong recebido');
+        // Removido log de pong
         // Limpar o timeout do heartbeat pois recebemos resposta
         if (this.heartbeatTimeout) {
           clearTimeout(this.heartbeatTimeout);
@@ -384,8 +385,14 @@ class WebSocketClient {
     }
   }
 
+  // Registrar um handler global para todos os eventos
+  setGlobalEventHandler(handler) {
+    this.globalEventHandler = handler;
+  }
+
   // Disparar um evento para todos os ouvintes registrados
   dispatchEvent(eventType, data) {
+    // Notificar listeners específicos para este tipo de evento
     if (this.eventListeners.has(eventType)) {
       this.eventListeners.get(eventType).forEach(callback => {
         try {
@@ -395,9 +402,15 @@ class WebSocketClient {
         }
       });
     }
-
-    // Também notificar a store global
-    useWebSocketStore.getState().handleEvent(eventType, data);
+    
+    // Notificar o handler global se existir
+    if (this.globalEventHandler) {
+      try {
+        this.globalEventHandler(eventType, data);
+      } catch (error) {
+        console.error(`[WebSocket] Erro ao executar handler global para evento ${eventType}:`, error);
+      }
+    }
   }
 
   // Método vazio para manter compatibilidade com código existente
@@ -426,8 +439,10 @@ class WebSocketClient {
           return;
         }
         
-        // Tentar novamente após o timeout
-        console.log(`[WebSocket] Aguardando conexão... Tentativa ${attempts}/${maxAttempts}`);
+        // Tentar novamente após o timeout (log apenas na primeira tentativa)
+        if (attempts === 1) {
+          console.log(`[WebSocket] Aguardando conexão...`);
+        }
         setTimeout(checkConnection, timeout);
       };
       

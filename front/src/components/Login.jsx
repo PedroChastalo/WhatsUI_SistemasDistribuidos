@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react'
 import { useWebSocket } from '@/contexts/WebSocketContext'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 export default function Login({ onLogin }) {
   // Estado para controlar qual aba está ativa (login ou registro)
@@ -27,20 +28,36 @@ export default function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
   
   // Usar o contexto WebSocket
-  const { login, register } = useWebSocket()
+  const { login, register, loginError, fetchError, isLoading: storeLoading } = useWebSocket()
+  
+  // Monitorar erros do WebSocketStore
+  useEffect(() => {
+    if (loginError) {
+      setError(loginError);
+      setIsLoading(false);
+    } else if (fetchError) {
+      setError(fetchError);
+      setIsLoading(false);
+    }
+  }, [loginError, fetchError])
+  
+  // Monitorar estado de carregamento do WebSocketStore
+  useEffect(() => {
+    setIsLoading(storeLoading);
+  }, [storeLoading])
 
   // Lidar com envio do formulário de login
   const handleLoginSubmit = async (e) => {
     e.preventDefault()
-    setIsLoading(true)
     setError('')
+    setSuccessMessage('')
 
     // Validação
     if (!loginData.email || !loginData.password) {
       setError('Por favor, preencha todos os campos')
-      setIsLoading(false)
       return
     }
 
@@ -51,8 +68,8 @@ export default function Login({ onLogin }) {
         password: loginData.password
       })
     } catch (error) {
-      setError(error.message || 'Erro ao fazer login')
-      setIsLoading(false)
+      // O erro será tratado pelo useEffect que monitora loginError
+      console.error('Erro capturado no handleLoginSubmit:', error);
     }
   }
   
@@ -61,6 +78,7 @@ export default function Login({ onLogin }) {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setSuccessMessage('')
     
     // Validação
     if (!registerData.username || !registerData.email || 
@@ -85,7 +103,9 @@ export default function Login({ onLogin }) {
         password: registerData.password
       })
       
-      // Após registro bem-sucedido, mudar para a aba de login
+      // Após registro bem-sucedido, mostrar mensagem de sucesso e mudar para a aba de login
+      setSuccessMessage('Registro realizado com sucesso! Você já pode fazer login.')
+      setError('') // Limpar qualquer erro anterior
       setActiveTab('login')
       setLoginData(prev => ({
         ...prev,
@@ -94,6 +114,7 @@ export default function Login({ onLogin }) {
       setIsLoading(false)
     } catch (error) {
       setError(error.message || 'Erro ao registrar')
+      setSuccessMessage('') // Limpar mensagem de sucesso em caso de erro
       setIsLoading(false)
     }
   }
@@ -102,12 +123,14 @@ export default function Login({ onLogin }) {
   const handleLoginInputChange = (field, value) => {
     setLoginData(prev => ({ ...prev, [field]: value }))
     if (error) setError('')
+    if (successMessage) setSuccessMessage('')
   }
   
   // Atualizar dados do formulário de registro
   const handleRegisterInputChange = (field, value) => {
     setRegisterData(prev => ({ ...prev, [field]: value }))
     if (error) setError('')
+    if (successMessage) setSuccessMessage('')
   }
 
   return (
@@ -163,10 +186,19 @@ export default function Login({ onLogin }) {
                 </div>
 
                 {error && activeTab === 'login' && (
-                  <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                    <AlertCircle size={16} />
-                    <span>{error}</span>
-                  </div>
+                  <Alert variant="destructive" className="border-red-500 bg-red-50">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Erro</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                
+                {successMessage && activeTab === 'login' && (
+                  <Alert variant="default" className="border-green-500 bg-green-50 text-green-800">
+                    <CheckCircle2 className="h-4 w-4" />
+                    <AlertTitle>Sucesso</AlertTitle>
+                    <AlertDescription>{successMessage}</AlertDescription>
+                  </Alert>
                 )}
 
                 <Button
@@ -174,7 +206,12 @@ export default function Login({ onLogin }) {
                   className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Entrando...' : 'Entrar'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Entrando...
+                    </>
+                  ) : 'Entrar'}
                 </Button>
               </form>
             </TabsContent>
@@ -242,10 +279,11 @@ export default function Login({ onLogin }) {
                 </div>
 
                 {error && activeTab === 'register' && (
-                  <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 p-3 rounded-lg">
-                    <AlertCircle size={16} />
-                    <span>{error}</span>
-                  </div>
+                  <Alert variant="destructive" className="border-red-500 bg-red-50">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Erro</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
                 )}
 
                 <Button
@@ -253,7 +291,12 @@ export default function Login({ onLogin }) {
                   className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium mt-4"
                   disabled={isLoading}
                 >
-                  {isLoading ? 'Cadastrando...' : 'Cadastrar'}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Cadastrando...
+                    </>
+                  ) : 'Cadastrar'}
                 </Button>
               </form>
             </TabsContent>
@@ -263,4 +306,3 @@ export default function Login({ onLogin }) {
     </div>
   )
 }
-

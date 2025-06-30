@@ -1,131 +1,145 @@
-// WebSocket Store usando Zustand
-// Gerencia o estado global relacionado à conexão WebSocket e eventos
+// websocketStore.js
+// Store Zustand para gerenciar estado do WebSocket, autenticação, dados do usuário, mensagens e grupos
+// Implementa tratamento robusto de erros e validação de respostas do backend
 
-import { create } from 'zustand';
-import websocketClient from '@/lib/websocket';
+import websocketClient from "@/lib/websocket";
+import { create } from "zustand";
 
-export const useWebSocketStore = create((set, get) => ({
-  // Estado de conexão
+const useWebSocketStore = create((set, get) => ({
+  // Estado da conexão WebSocket
   isConnected: false,
   connectionError: null,
-  
+
   // Estado de autenticação
   isAuthenticated: false,
   currentUser: null,
   sessionId: null,
-  
-  // Dados do usuário
+  isLoading: false,
+  loginError: null,
+
+  // Estado de dados
   users: [],
   userStatus: {},
-  
-  // Conversas e mensagens
   privateConversations: [],
   privateMessages: {},
   groups: [],
   groupMessages: {},
-  cachedGroupMembers: {},
-  
-  // Estado da UI
-  isLoading: false,
   notifications: [],
-  
-  // Funções de gerenciamento de cache
-  clearGroupCache: (groupId) => {
-    if (!groupId) return;
-    
-    set(state => ({
-      cachedGroupMembers: {
-        ...state.cachedGroupMembers,
-        [groupId]: undefined
-      },
-      groupMessages: {
-        ...state.groupMessages,
-        [groupId]: undefined
-      }
-    }));
-  },
-  
-  clearPrivateMessageCache: (userId) => {
-    if (!userId) return;
-    
-    set(state => ({
-      privateMessages: {
-        ...state.privateMessages,
-        [userId]: undefined
-      }
-    }));
-  },
-  
-  // Ações de conexão
-  setConnectionStatus: (isConnected) => set({ isConnected }),
-  
-  // Inicializar conexão WebSocket
+  fetchError: null,
+
+  // Cache para evitar requisições repetidas
+  cachedGroupMembers: {},
+
+  // Flag para evitar inicialização duplicada
+  isInitialized: false,
+
+  // Inicializar o WebSocket e configurar eventos
   initializeWebSocket: () => {
-    websocketClient.connect();
-  },
-  
-  // Autenticação
-  login: async (username, password) => {
-    set({ isLoading: true });
-    
-    try {
-      // Garantir que o WebSocket está conectado antes de tentar login
-      console.log('[WebSocketStore] Verificando conexão WebSocket antes do login...');
-      
-      // Desconectar qualquer conexão existente para garantir uma conexão limpa
-      // Isso é importante porque o login não precisa de sessionId
-      websocketClient.disconnect();
-      
-      // Aguardar um momento para garantir que a conexão anterior foi fechada
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Iniciar uma nova conexão sem sessionId para login
-      console.log('[WebSocketStore] Iniciando nova conexão WebSocket para login...');
-      websocketClient.connect();
-      
-      // Usar o método waitForConnection do cliente WebSocket que já tem retry embutido
-      try {
-        console.log('[WebSocketStore] Aguardando estabelecimento da conexão...');
-        await websocketClient.waitForConnection(10, 500); // 10 tentativas, 500ms entre cada
-      } catch (connError) {
-        console.error('[WebSocketStore] Falha ao conectar WebSocket:', connError);
-        throw new Error(`Não foi possível estabelecer conexão com o servidor: ${connError.message}`);
+    // Verificar se já está inicializado para evitar duplicação
+    if (get().isInitialized) return;
+
+    // Registrar o handler global para todos os eventos do WebSocket
+    websocketClient.setGlobalEventHandler((eventType, data) => {
+      if (eventType === "connectionChange") {
+        set({
+          isConnected: data,
+          connectionError: data ? null : "Conexão com o servidor perdida",
+        });
+      } else {
+        // Processar outros eventos recebidos do servidor
+        get().handleEvent(eventType, data);
       }
-      
-      console.log('[WebSocketStore] WebSocket conectado, enviando requisição de login...');
-      const response = await websocketClient.sendRequest('login', { email: username, password });
-      console.log('[WebSocketStore] Login bem-sucedido:', response);
-      
-      // Armazenar dados do usuário e sessão
+    });
+
+    // Inicializar o websocketClient se ainda não estiver conectado
+    if (!websocketClient.socket) {
+      websocketClient.connect();
+    }
+
+    set({ isInitialized: true });
+  },
+
+  // Atualizar status de conexão
+  setConnectionStatus: (isConnected) => {
+    set({ isConnected });
+  },
+
+  // Ações de autenticação
+  login: async (email, password) => {
+    try {
+      set({ isLoading: true, loginError: null, fetchError: null });
+
+      // Garantir que o WebSocket esteja inicializado
+      get().initializeWebSocket();
+
+      // Aguardar a conexão estar pronta
+      await websocketClient.waitForConnection();
+
+      const response = await websocketClient.sendRequest("login", {
+        email,
+        password,
+      });
+
+      // Validar formato da resposta
+      if (!response || !response.userId || !response.sessionId) {
+        set({
+          isLoading: false,
+          loginError: "Formato de resposta inválido do servidor",
+        });
+        throw new Error("Formato de resposta inválido do servidor");
+      }
+
       set({
         isAuthenticated: true,
-        currentUser: response.user,
+        currentUser: response,
         sessionId: response.sessionId,
-        isLoading: false
+        isLoading: false,
+        loginError: null,
       });
-      
-      // Reconectar com o sessionId para manter a sessão autenticada
-      console.log('[WebSocketStore] Reconectando com sessionId para manter sessão...');
-      websocketClient.disconnect();
-      await new Promise(resolve => setTimeout(resolve, 500));
-      websocketClient.connect();
-      
-      // Carregar dados iniciais após login
-      get().loadInitialData();
-      
+
+      // Reconectar com o sessionId para autenticar a conexão WebSocket
+      await websocketClient.reconnect(response.sessionId);
+
+      // Carregar dados iniciais após login bem-sucedido
+      try {
+        await get().loadInitialData();
+      } catch (dataError) {
+        set({ fetchError: `Erro ao carregar dados: ${dataError.message}` });
+      }
+
       return response;
     } catch (error) {
-      console.error('[WebSocketStore] Erro durante login:', error);
-      set({ isLoading: false });
+      set({
+        isAuthenticated: false,
+        currentUser: null,
+        sessionId: null,
+        isLoading: false,
+        loginError: error.message || "Erro ao fazer login. Tente novamente.",
+      });
       throw error;
     }
   },
-  
+
   register: async (userData) => {
     set({ isLoading: true });
-    
+
     try {
-      const response = await websocketClient.sendRequest('register', userData);
+      if (
+        !userData ||
+        !userData.email ||
+        !userData.password ||
+        !userData.username
+      ) {
+        throw new Error("Dados de registro incompletos");
+      }
+
+      const response = await websocketClient.sendRequest("register", userData);
+
+      // Validar formato da resposta
+      if (!response || !response.success) {
+        throw new Error(response?.error || "Erro ao registrar usuário");
+      }
+
       set({ isLoading: false });
       return response;
     } catch (error) {
@@ -133,312 +147,461 @@ export const useWebSocketStore = create((set, get) => ({
       throw error;
     }
   },
-  
+
   logout: async () => {
     set({ isLoading: true });
-    
+
     try {
-      if (get().sessionId) {
-        await websocketClient.sendRequest('logout', { sessionId: get().sessionId });
+      const { sessionId } = get();
+      if (sessionId) {
+        await websocketClient.sendRequest("logout", { sessionId });
       }
-      
+
       // Limpar estado
       set({
         isAuthenticated: false,
         currentUser: null,
         sessionId: null,
         users: [],
+        userStatus: {},
         privateConversations: [],
         privateMessages: {},
         groups: [],
         groupMessages: {},
-        isLoading: false
+        cachedGroupMembers: {},
+        notifications: [],
+        isLoading: false,
+        loginError: null,
+        fetchError: null,
       });
-      
+
       return true;
     } catch (error) {
       set({ isLoading: false });
       throw error;
     }
   },
-  
+
   // Carregar dados iniciais após login
   loadInitialData: async () => {
     const { sessionId } = get();
     if (!sessionId) return;
-    
+
     // Carregar usuários
-    get().fetchUsers();
-    
+    await get().fetchUsers();
+
     // Carregar conversas privadas
-    get().fetchPrivateConversations();
-    
+    await get().fetchPrivateConversations();
+
     // Carregar grupos
-    get().fetchGroups();
+    await get().fetchGroups();
   },
-  
+
   // Ações de usuários
   fetchUsers: async () => {
     const { sessionId } = get();
-    if (!sessionId) return;
-    
+    if (!sessionId) {
+      set({ fetchError: "Sessão não encontrada" });
+      return [];
+    }
+
     try {
-      const response = await websocketClient.sendRequest('getUsers', { sessionId });
-      
+      const response = await websocketClient.sendRequest("getUsers", {
+        sessionId,
+      });
+
+      // Verificar se a resposta é um array (formato direto) ou um objeto com propriedade users
+      let users = [];
+
+      if (Array.isArray(response)) {
+        // Resposta direta como array
+        users = response;
+      } else if (response && response.users && Array.isArray(response.users)) {
+        // Resposta no formato esperado {users: [...]}
+        users = response.users;
+      } else {
+        console.warn(
+          "Resposta inesperada do servidor para getUsers:",
+          response
+        );
+        return [];
+      }
+
       // Mapear status de usuários para acesso rápido
       const userStatus = {};
-      response.users.forEach(user => {
-        userStatus[user.userId] = user.status;
+      users.forEach((user) => {
+        if (user && user.userId) {
+          userStatus[user.userId] = user.status || "offline";
+        }
       });
-      
+
       set({
-        users: response.users,
-        userStatus
+        users,
+        userStatus,
+        fetchError: null,
       });
-      
-      return response.users;
+
+      return users;
     } catch (error) {
-      console.error('Erro ao buscar usuários:', error);
+      console.error("Erro ao buscar usuários:", error);
+      set({ fetchError: `Erro ao buscar usuários: ${error.message}` });
       return [];
     }
   },
-  
+
   updateStatus: async (status) => {
     const { sessionId, currentUser } = get();
     if (!sessionId || !currentUser) return;
-    
+
     try {
-      await websocketClient.sendRequest('updateStatus', { sessionId, status });
-      
+      await websocketClient.sendRequest("updateStatus", { sessionId, status });
+
       // Atualizar status local
-      set(state => ({
+      set((state) => ({
         userStatus: {
           ...state.userStatus,
-          [currentUser.userId]: status
-        }
+          [currentUser.userId]: status,
+        },
       }));
-      
+
       return true;
     } catch (error) {
-      console.error('Erro ao atualizar status:', error);
+      console.error("Erro ao atualizar status:", error);
+      set({ fetchError: `Erro ao atualizar status: ${error.message}` });
       return false;
     }
   },
-  
+
   // Ações de mensagens privadas
   fetchPrivateConversations: async () => {
     const { sessionId } = get();
-    if (!sessionId) return;
-    
+    if (!sessionId) {
+      set({ fetchError: "Sessão não encontrada" });
+      return [];
+    }
+
     try {
-      const response = await websocketClient.sendRequest('getPrivateConversations', { sessionId });
-      set({ privateConversations: response.conversations });
-      return response.conversations;
+      const response = await websocketClient.sendRequest(
+        "getPrivateConversations",
+        { sessionId }
+      );
+
+      // Verificar se a resposta é um array (formato direto) ou um objeto com propriedade conversations
+      let conversations = [];
+
+      if (Array.isArray(response)) {
+        // Resposta direta como array
+        conversations = response;
+      } else if (
+        response &&
+        response.conversations &&
+        Array.isArray(response.conversations)
+      ) {
+        // Resposta no formato esperado {conversations: [...]}
+        conversations = response.conversations;
+      } else {
+        console.warn(
+          "Resposta inesperada do servidor para getPrivateConversations:",
+          response
+        );
+        return [];
+      }
+
+      set({
+        privateConversations: conversations,
+        fetchError: null,
+      });
+
+      return conversations;
     } catch (error) {
-      console.error('Erro ao buscar conversas privadas:', error);
+      console.error("Erro ao buscar conversas privadas:", error);
+      set({ fetchError: `Erro ao buscar conversas: ${error.message}` });
       return [];
     }
   },
-  
-  fetchPrivateMessages: async (otherUserId) => {
+
+  fetchPrivateMessages: async (userId) => {
     const { sessionId, privateMessages } = get();
-    if (!sessionId) return [];
-    
+    if (!sessionId) {
+      set({ fetchError: "Sessão não encontrada" });
+      return [];
+    }
+
+    if (!userId) {
+      console.error("fetchPrivateMessages chamado sem userId");
+      set({ fetchError: "ID de usuário não fornecido" });
+      return [];
+    }
+
     try {
       // Verificar se já temos as mensagens em cache
-      if (privateMessages[otherUserId] && privateMessages[otherUserId].length > 0) {
+      if (privateMessages[userId] && privateMessages[userId].length > 0) {
         // Se já tivermos mensagens em cache, retornar diretamente
-        return privateMessages[otherUserId];
+        return privateMessages[userId];
       }
-      
-      const response = await websocketClient.sendRequest('getPrivateMessages', { 
-        sessionId, 
-        otherUserId,
-        limit: 50
+
+      const response = await websocketClient.sendRequest("getPrivateMessages", {
+        sessionId,
+        userId,
+        limit: 50,
       });
-      
-      // Verificar se a resposta é válida
-      if (!response || !response.messages) {
+
+      // Verificar se a resposta é um array (formato direto) ou um objeto com propriedade messages
+      let messages = [];
+
+      if (Array.isArray(response)) {
+        // Resposta direta como array
+        messages = response;
+      } else if (
+        response &&
+        response.messages &&
+        Array.isArray(response.messages)
+      ) {
+        // Resposta no formato esperado {messages: [...]}
+        messages = response.messages;
+      } else {
+        console.warn(
+          "Resposta inesperada do servidor para getPrivateMessages:",
+          response
+        );
         return [];
       }
-      
+
       // Atualizar mensagens no estado
       set({
         privateMessages: {
           ...privateMessages,
-          [otherUserId]: response.messages
-        }
+          [userId]: messages,
+        },
+        fetchError: null,
       });
-      
-      return response.messages;
+
+      return messages;
     } catch (error) {
-      console.error(`Erro ao buscar mensagens com usuário ${otherUserId}:`, error);
+      console.error(`Erro ao buscar mensagens privadas com ${userId}:`, error);
+      set({ fetchError: `Erro ao buscar mensagens: ${error.message}` });
       return [];
     }
   },
-  
+
   sendPrivateMessage: async (receiverId, content) => {
-    const { sessionId, currentUser } = get();
-    if (!sessionId || !currentUser || !receiverId || !content) {
-      throw new Error('Parâmetros inválidos');
+    const { sessionId, currentUser, privateMessages } = get();
+
+    // Validação de parâmetros
+    if (!sessionId || !currentUser) {
+      const errorMsg = "Sessão não encontrada";
+      console.error("sendPrivateMessage:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
     }
-    
+
+    if (!receiverId || !content) {
+      const errorMsg = "Parâmetros inválidos";
+      console.error("sendPrivateMessage:", errorMsg, { receiverId, content });
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
     try {
-      const response = await websocketClient.sendRequest('sendPrivateMessage', {
+      const response = await websocketClient.sendRequest("sendPrivateMessage", {
         sessionId,
-        receiverId,
-        content
+        userId: receiverId, // Usar userId em vez de receiverId para compatibilidade com o backend
+        content,
       });
-      
+
+      // Validar resposta
+      if (!response || !response.messageId) {
+        const errorMsg = "Formato de resposta inválido do servidor";
+        console.error("sendPrivateMessage:", errorMsg, response);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
       // Adicionar mensagem ao histórico local
-      set(state => {
+      set((state) => {
         const currentMessages = state.privateMessages[receiverId] || [];
-        
+
         return {
           privateMessages: {
             ...state.privateMessages,
-            [receiverId]: [...currentMessages, {
-              messageId: response.messageId,
-              senderId: currentUser.userId,
-              senderName: currentUser.displayName,
-              content,
-              timestamp: response.timestamp,
-              status: 'sent',
-              isOwn: true,
-              isFile: false
-            }]
-          }
+            [receiverId]: [
+              ...currentMessages,
+              {
+                messageId: response.messageId,
+                senderId: currentUser.userId,
+                senderName: currentUser.displayName,
+                content,
+                timestamp: response.timestamp,
+                status: "sent",
+                isOwn: true,
+                isFile: false,
+              },
+            ],
+          },
         };
       });
-      
+
       // Atualizar última mensagem na conversa
-      get().updateConversationLastMessage(receiverId, content, response.timestamp);
-      
+      get().updateConversationLastMessage(
+        receiverId,
+        content,
+        response.timestamp
+      );
+
       return response;
     } catch (error) {
-      console.error('Erro ao enviar mensagem privada:', error);
+      console.error("Erro ao enviar mensagem privada:", error);
+      set({ fetchError: `Erro ao enviar mensagem: ${error.message}` });
       throw error;
     }
   },
-  
+
   sendPrivateFile: async (receiverId, file, fileType = null) => {
     const { sessionId, currentUser } = get();
+
+    // Validação de parâmetros
     if (!sessionId || !currentUser || !receiverId || !file) {
-      throw new Error('Parâmetros inválidos');
+      const errorMsg = "Parâmetros inválidos";
+      console.error("sendPrivateFile:", errorMsg, { receiverId, file });
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
     }
-    
+
     try {
       // Criar FormData para envio do arquivo
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('sessionId', sessionId);
-      formData.append('receiverId', receiverId);
+      formData.append("file", file);
+      formData.append("sessionId", sessionId);
+      formData.append("receiverId", receiverId);
       if (fileType) {
-        formData.append('fileType', fileType);
+        formData.append("fileType", fileType);
       }
-      
+
       // Em modo mock, simular envio
       if (websocketClient.mockMode) {
         const mockResponse = {
-          messageId: 'file_' + Date.now(),
+          messageId: "file_" + Date.now(),
           timestamp: Date.now(),
           fileName: file.name,
           fileUrl: URL.createObjectURL(file),
-          fileType: fileType || file.type
+          fileType: fileType || file.type,
         };
-        
+
         // Adicionar mensagem ao histórico local
-        set(state => {
+        set((state) => {
           const currentMessages = state.privateMessages[receiverId] || [];
-          
+
           return {
             privateMessages: {
               ...state.privateMessages,
-              [receiverId]: [...currentMessages, {
-                messageId: mockResponse.messageId,
+              [receiverId]: [
+                ...currentMessages,
+                {
+                  messageId: mockResponse.messageId,
+                  senderId: currentUser.userId,
+                  senderName: currentUser.displayName,
+                  content: `Arquivo: ${file.name}`,
+                  fileName: file.name,
+                  fileUrl: mockResponse.fileUrl,
+                  fileType: mockResponse.fileType,
+                  timestamp: mockResponse.timestamp,
+                  status: "sent",
+                  isOwn: true,
+                  isFile: true,
+                },
+              ],
+            },
+          };
+        });
+
+        // Atualizar última mensagem na conversa
+        get().updateConversationLastMessage(
+          receiverId,
+          `Arquivo: ${file.name}`,
+          mockResponse.timestamp
+        );
+
+        return mockResponse;
+      }
+
+      // Enviar para o servidor via API REST (não WebSocket)
+      const response = await fetch("/api/messages/private/file", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ao enviar arquivo: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      // Validar resposta
+      if (!result || !result.messageId || !result.fileUrl) {
+        const errorMsg = "Formato de resposta inválido do servidor";
+        console.error("sendPrivateFile:", errorMsg, result);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
+      // Adicionar mensagem ao histórico local
+      set((state) => {
+        const currentMessages = state.privateMessages[receiverId] || [];
+
+        return {
+          privateMessages: {
+            ...state.privateMessages,
+            [receiverId]: [
+              ...currentMessages,
+              {
+                messageId: result.messageId,
                 senderId: currentUser.userId,
                 senderName: currentUser.displayName,
                 content: `Arquivo: ${file.name}`,
                 fileName: file.name,
-                fileUrl: mockResponse.fileUrl,
-                fileType: mockResponse.fileType,
-                timestamp: mockResponse.timestamp,
-                status: 'sent',
+                fileUrl: result.fileUrl,
+                fileType: result.fileType,
+                timestamp: result.timestamp,
+                status: "sent",
                 isOwn: true,
-                isFile: true
-              }]
-            }
-          };
-        });
-        
-        // Atualizar última mensagem na conversa
-        get().updateConversationLastMessage(receiverId, `Arquivo: ${file.name}`, mockResponse.timestamp);
-        
-        return mockResponse;
-      }
-      
-      // Enviar para o servidor via API REST (não WebSocket)
-      const response = await fetch('/api/messages/private/file', {
-        method: 'POST',
-        body: formData
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Erro ao enviar arquivo: ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      
-      // Adicionar mensagem ao histórico local
-      set(state => {
-        const currentMessages = state.privateMessages[receiverId] || [];
-        
-        return {
-          privateMessages: {
-            ...state.privateMessages,
-            [receiverId]: [...currentMessages, {
-              messageId: result.messageId,
-              senderId: currentUser.userId,
-              senderName: currentUser.displayName,
-              content: `Arquivo: ${file.name}`,
-              fileName: file.name,
-              fileUrl: result.fileUrl,
-              fileType: result.fileType,
-              timestamp: result.timestamp,
-              status: 'sent',
-              isOwn: true,
-              isFile: true
-            }]
-          }
+                isFile: true,
+              },
+            ],
+          },
         };
       });
-      
+
       // Atualizar última mensagem na conversa
-      get().updateConversationLastMessage(receiverId, `Arquivo: ${file.name}`, result.timestamp);
-      
+      get().updateConversationLastMessage(
+        receiverId,
+        `Arquivo: ${file.name}`,
+        result.timestamp
+      );
+
       return result;
     } catch (error) {
-      console.error('Erro ao enviar arquivo em mensagem privada:', error);
+      console.error("Erro ao enviar arquivo em mensagem privada:", error);
+      set({ fetchError: `Erro ao enviar arquivo: ${error.message}` });
       throw error;
     }
   },
-  
+
   updateConversationLastMessage: (userId, content, timestamp) => {
-    set(state => {
+    set((state) => {
       const conversations = [...state.privateConversations];
-      const existingIndex = conversations.findIndex(c => c.userId === userId);
-      
+      const existingIndex = conversations.findIndex((c) => c.userId === userId);
+
       if (existingIndex >= 0) {
         // Atualizar conversa existente
         conversations[existingIndex] = {
           ...conversations[existingIndex],
           lastMessage: content,
           timestamp,
-          unreadCount: 0 // Zerar contagem não lida para mensagens enviadas
+          unreadCount: 0, // Zerar contagem não lida para mensagens enviadas
         };
       } else {
         // Adicionar nova conversa
-        const user = state.users.find(u => u.userId === userId);
+        const user = state.users.find((u) => u.userId === userId);
         if (user) {
           conversations.push({
             userId,
@@ -446,681 +609,1042 @@ export const useWebSocketStore = create((set, get) => ({
             displayName: user.displayName,
             lastMessage: content,
             timestamp,
-            unreadCount: 0
+            unreadCount: 0,
           });
         }
       }
-      
+
       // Ordenar por timestamp mais recente
       conversations.sort((a, b) => b.timestamp - a.timestamp);
-      
+
       return { privateConversations: conversations };
     });
   },
-  
+
+  // Limpar cache de mensagens privadas
+  clearPrivateMessageCache: (userId = null) => {
+    if (userId) {
+      // Limpar cache para um usuário específico
+      set((state) => ({
+        privateMessages: {
+          ...state.privateMessages,
+          [userId]: [],
+        },
+      }));
+    } else {
+      // Limpar todo o cache
+      set({ privateMessages: {} });
+    }
+  },
+
   // Ações de grupos
   fetchGroups: async () => {
     const { sessionId } = get();
-    if (!sessionId) return;
-    
-    try {
-      const response = await websocketClient.sendRequest('getGroups', { sessionId });
-      set({ groups: response.groups });
-      return response.groups;
-    } catch (error) {
-      console.error('Erro ao buscar grupos:', error);
+    if (!sessionId) {
+      set({ fetchError: "Sessão não encontrada" });
       return [];
     }
-  },
-  
-  getGroupMembers: async (groupId) => {
-    const { sessionId } = get();
-    if (!sessionId) return [];
-    
+
     try {
-      // Verificar se já temos os membros em cache para evitar requisições repetidas
-      const cachedMembers = get().cachedGroupMembers?.[groupId];
-      if (cachedMembers) {
-        return cachedMembers;
-      }
-      
-      const response = await websocketClient.sendRequest('getGroupMembers', { 
+      const response = await websocketClient.sendRequest("getGroups", {
         sessionId,
-        groupId 
       });
-      
-      if (!response || !response.members) {
+
+      // Verificar se a resposta é um array (formato direto) ou um objeto com propriedade groups
+      let groups = [];
+
+      if (Array.isArray(response)) {
+        // Resposta direta como array
+        groups = response;
+      } else if (
+        response &&
+        response.groups &&
+        Array.isArray(response.groups)
+      ) {
+        // Resposta no formato esperado {groups: [...]}
+        groups = response.groups;
+      } else {
+        console.warn(
+          "Resposta inesperada do servidor para getGroups:",
+          response
+        );
         return [];
       }
-      
-      // Mapear os membros com informações adicionais dos usuários
-      const users = get().users;
-      const members = response.members.map(member => {
-        const userInfo = users.find(u => u.userId === member.userId) || {};
-        return {
-          ...member,
-          ...userInfo,
-          name: userInfo.displayName || userInfo.username || member.name || 'Usuário',
-          isAdmin: member.role === 'admin'
-        };
+
+      set({
+        groups,
+        fetchError: null,
       });
-      
-      // Armazenar em cache para evitar requisições repetidas
-      set(state => ({
-        cachedGroupMembers: {
-          ...state.cachedGroupMembers,
-          [groupId]: members
-        }
-      }));
-      
-      return members;
+
+      return groups;
     } catch (error) {
-      console.error('Erro ao buscar membros do grupo:', error);
+      console.error("Erro ao buscar grupos:", error);
+      set({ fetchError: `Erro ao buscar grupos: ${error.message}` });
       return [];
     }
   },
-  
-  createGroup: async (groupData) => {
-    const { sessionId } = get();
-    if (!sessionId) return;
-    
-    try {
-      const response = await websocketClient.sendRequest('createGroup', {
-        sessionId,
-        ...groupData
-      });
-      
-      // Atualizar lista de grupos
-      await get().fetchGroups();
-      
-      return response;
-    } catch (error) {
-      console.error('Erro ao criar grupo:', error);
-      throw error;
-    }
-  },
-  
+
   fetchGroupMessages: async (groupId) => {
     const { sessionId, groupMessages } = get();
-    if (!sessionId) return [];
-    
+    if (!sessionId) {
+      set({ fetchError: "Sessão não encontrada" });
+      return [];
+    }
+
+    if (!groupId) {
+      console.error("fetchGroupMessages chamado sem groupId");
+      set({ fetchError: "ID de grupo não fornecido" });
+      return [];
+    }
+
     try {
       // Verificar se já temos as mensagens em cache
       if (groupMessages[groupId] && groupMessages[groupId].length > 0) {
         // Se já tivermos mensagens em cache, retornar diretamente
         return groupMessages[groupId];
       }
-      
-      const response = await websocketClient.sendRequest('getGroupMessages', { 
-        sessionId, 
+
+      const response = await websocketClient.sendRequest("getGroupMessages", {
+        sessionId,
         groupId,
-        limit: 50
+        limit: 50,
       });
-      
-      // Verificar se a resposta é válida
-      if (!response || !response.messages) {
+
+      // Verificar se a resposta é um array (formato direto) ou um objeto com propriedade messages
+      let messages = [];
+
+      if (Array.isArray(response)) {
+        // Resposta direta como array
+        messages = response;
+      } else if (
+        response &&
+        response.messages &&
+        Array.isArray(response.messages)
+      ) {
+        // Resposta no formato esperado {messages: [...]}
+        messages = response.messages;
+      } else {
+        console.warn(
+          "Resposta inesperada do servidor para getGroupMessages:",
+          response
+        );
         return [];
       }
-      
+
       // Atualizar mensagens no estado
       set({
         groupMessages: {
           ...groupMessages,
-          [groupId]: response.messages
-        }
+          [groupId]: messages,
+        },
+        fetchError: null,
       });
-      
-      return response.messages;
+
+      return messages;
     } catch (error) {
       console.error(`Erro ao buscar mensagens do grupo ${groupId}:`, error);
+      set({ fetchError: `Erro ao buscar mensagens: ${error.message}` });
       return [];
     }
   },
-  
+
   sendGroupMessage: async (groupId, content) => {
-    const { sessionId, groupMessages, currentUser } = get();
-    if (!sessionId || !currentUser) return;
-    
+    const { sessionId, currentUser, groupMessages } = get();
+
+    // Validação de parâmetros
+    if (!sessionId || !currentUser) {
+      const errorMsg = "Sessão não encontrada";
+      console.error("sendGroupMessage:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    if (!groupId || !content) {
+      const errorMsg = "Parâmetros inválidos";
+      console.error("sendGroupMessage:", errorMsg, { groupId, content });
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
     try {
-      const response = await websocketClient.sendRequest('sendGroupMessage', {
+      const response = await websocketClient.sendRequest("sendGroupMessage", {
         sessionId,
         groupId,
-        content
-      });
-      
-      // Adicionar mensagem localmente para feedback imediato
-      const newMessage = {
-        messageId: response.messageId,
-        senderId: currentUser.userId,
-        senderName: currentUser.displayName || currentUser.username,
         content,
-        timestamp: response.timestamp,
-        isFile: false,
-        isOwn: true // Marcar como mensagem própria para exibição correta
-      };
-      
-      set(state => {
+      });
+
+      // Validar resposta
+      if (!response || !response.messageId) {
+        const errorMsg = "Formato de resposta inválido do servidor";
+        console.error("sendGroupMessage:", errorMsg, response);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
+      // Adicionar mensagem ao histórico local
+      set((state) => {
         const currentMessages = state.groupMessages[groupId] || [];
-        
+
         return {
           groupMessages: {
             ...state.groupMessages,
-            [groupId]: [...currentMessages, newMessage]
-          }
+            [groupId]: [
+              ...currentMessages,
+              {
+                messageId: response.messageId,
+                senderId: currentUser.userId,
+                senderName: currentUser.displayName || currentUser.username,
+                content,
+                timestamp: response.timestamp,
+                status: "sent",
+                isOwn: true,
+                isFile: false,
+              },
+            ],
+          },
         };
       });
-      
-      // Atualizar também a lista de grupos
+
+      // Atualizar última mensagem no grupo
       get().updateGroupLastMessage(groupId, content, response.timestamp);
-      
+
       return response;
     } catch (error) {
-      console.error('Erro ao enviar mensagem para grupo:', error);
+      console.error("Erro ao enviar mensagem de grupo:", error);
+      set({ fetchError: `Erro ao enviar mensagem: ${error.message}` });
       throw error;
     }
   },
-  
-  updateGroupLastMessage: (groupId, content, timestamp) => {
-    set(state => {
-      const groups = state.groups.map(group => {
-        if (group.groupId === groupId) {
+
+  sendGroupFile: async (groupId, file, fileType = null) => {
+    const { sessionId, currentUser } = get();
+
+    // Validação de parâmetros
+    if (!sessionId || !currentUser || !groupId || !file) {
+      const errorMsg = "Parâmetros inválidos";
+      console.error("sendGroupFile:", errorMsg, { groupId, file });
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    try {
+      // Criar FormData para envio do arquivo
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("sessionId", sessionId);
+      formData.append("groupId", groupId);
+      if (fileType) {
+        formData.append("fileType", fileType);
+      }
+
+      // Em modo mock, simular envio
+      if (websocketClient.mockMode) {
+        const mockResponse = {
+          messageId: "file_" + Date.now(),
+          timestamp: Date.now(),
+          fileName: file.name,
+          fileUrl: URL.createObjectURL(file),
+          fileType: fileType || file.type,
+        };
+
+        // Adicionar mensagem ao histórico local
+        set((state) => {
+          const currentMessages = state.groupMessages[groupId] || [];
+
           return {
-            ...group,
-            lastMessage: content,
-            timestamp
+            groupMessages: {
+              ...state.groupMessages,
+              [groupId]: [
+                ...currentMessages,
+                {
+                  messageId: mockResponse.messageId,
+                  senderId: currentUser.userId,
+                  senderName: currentUser.displayName || currentUser.username,
+                  content: `Arquivo: ${file.name}`,
+                  fileName: file.name,
+                  fileUrl: mockResponse.fileUrl,
+                  fileType: mockResponse.fileType,
+                  timestamp: mockResponse.timestamp,
+                  status: "sent",
+                  isOwn: true,
+                  isFile: true,
+                },
+              ],
+            },
           };
-        }
-        return group;
+        });
+
+        // Atualizar última mensagem no grupo
+        get().updateGroupLastMessage(
+          groupId,
+          `Arquivo: ${file.name}`,
+          mockResponse.timestamp
+        );
+
+        return mockResponse;
+      }
+
+      // Enviar para o servidor via API REST (não WebSocket)
+      const response = await fetch("/api/messages/group/file", {
+        method: "POST",
+        body: formData,
       });
-      
+
+      if (!response.ok) {
+        throw new Error(`Erro ao enviar arquivo: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      // Validar resposta
+      if (!result || !result.messageId || !result.fileUrl) {
+        const errorMsg = "Formato de resposta inválido do servidor";
+        console.error("sendGroupFile:", errorMsg, result);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
+      // Adicionar mensagem ao histórico local
+      set((state) => {
+        const currentMessages = state.groupMessages[groupId] || [];
+
+        return {
+          groupMessages: {
+            ...state.groupMessages,
+            [groupId]: [
+              ...currentMessages,
+              {
+                messageId: result.messageId,
+                senderId: currentUser.userId,
+                senderName: currentUser.displayName || currentUser.username,
+                content: `Arquivo: ${file.name}`,
+                fileName: file.name,
+                fileUrl: result.fileUrl,
+                fileType: result.fileType,
+                timestamp: result.timestamp,
+                status: "sent",
+                isOwn: true,
+                isFile: true,
+              },
+            ],
+          },
+        };
+      });
+
+      // Atualizar última mensagem no grupo
+      get().updateGroupLastMessage(
+        groupId,
+        `Arquivo: ${file.name}`,
+        result.timestamp
+      );
+
+      return result;
+    } catch (error) {
+      console.error("Erro ao enviar arquivo em mensagem de grupo:", error);
+      set({ fetchError: `Erro ao enviar arquivo: ${error.message}` });
+      throw error;
+    }
+  },
+
+  updateGroupLastMessage: (groupId, content, timestamp) => {
+    set((state) => {
+      const groups = [...state.groups];
+      const existingIndex = groups.findIndex((g) => g.groupId === groupId);
+
+      if (existingIndex >= 0) {
+        // Atualizar grupo existente
+        groups[existingIndex] = {
+          ...groups[existingIndex],
+          lastMessage: content,
+          timestamp,
+          unreadCount: 0, // Zerar contagem não lida para mensagens enviadas
+        };
+      }
+
+      // Ordenar por timestamp mais recente
+      groups.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
       return { groups };
     });
   },
-  
-  // Enviar arquivo em mensagem de grupo
-  sendGroupFile: async (groupId, file, fileType = null) => {
-    const { sessionId, currentUser } = get();
-    if (!sessionId || !currentUser || !groupId || !file) {
-      throw new Error('Parâmetros inválidos');
+
+  // Limpar cache de mensagens de grupo
+  clearGroupMessageCache: (groupId = null) => {
+    if (groupId) {
+      // Limpar cache para um grupo específico
+      set((state) => ({
+        groupMessages: {
+          ...state.groupMessages,
+          [groupId]: [],
+        },
+      }));
+    } else {
+      // Limpar todo o cache
+      set({ groupMessages: {} });
     }
-    
+  },
+
+  // Limpar cache de membros de grupo
+  clearGroupMembersCache: (groupId = null) => {
+    if (groupId) {
+      // Limpar cache para um grupo específico
+      set((state) => ({
+        cachedGroupMembers: {
+          ...state.cachedGroupMembers,
+          [groupId]: [],
+        },
+      }));
+    } else {
+      // Limpar todo o cache
+      set({ cachedGroupMembers: {} });
+    }
+  },
+
+  // Gerenciamento de grupos
+  createGroup: async (groupName, members = []) => {
+    const { sessionId, currentUser } = get();
+
+    // Validação de parâmetros
+    if (!sessionId || !currentUser) {
+      const errorMsg = "Sessão não encontrada";
+      console.error("createGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    if (!groupName || groupName.trim() === "") {
+      const errorMsg = "Nome do grupo não pode ser vazio";
+      console.error("createGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
     try {
-      // Criar FormData para envio do arquivo
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('sessionId', sessionId);
-      formData.append('groupId', groupId);
-      if (fileType) {
-        formData.append('fileType', fileType);
-      }
-      
-      // Em modo mock, simular envio
-      if (websocketClient.mockMode) {
-        const mockResponse = {
-          messageId: 'file_group_' + Date.now(),
-          timestamp: Date.now(),
-          fileName: file.name,
-          fileUrl: URL.createObjectURL(file),
-          fileType: fileType || file.type
-        };
-        
-        // Adicionar mensagem ao histórico local
-        set(state => {
-          const currentMessages = state.groupMessages[groupId] || [];
-          
-          return {
-            groupMessages: {
-              ...state.groupMessages,
-              [groupId]: [...currentMessages, {
-                messageId: mockResponse.messageId,
-                senderId: currentUser.userId,
-                senderName: currentUser.displayName,
-                content: `Arquivo: ${file.name}`,
-                fileName: file.name,
-                fileUrl: mockResponse.fileUrl,
-                fileType: mockResponse.fileType,
-                timestamp: mockResponse.timestamp,
-                status: 'sent',
-                isOwn: true,
-                isFile: true
-              }]
-            }
-          };
-        });
-        
-        // Atualizar última mensagem do grupo
-        get().updateGroupLastMessage(groupId, `Arquivo: ${file.name}`, mockResponse.timestamp);
-        
-        return mockResponse;
-      }
-      
-      // Enviar para o servidor via API REST (não WebSocket)
-      const response = await fetch('/api/messages/group/file', {
-        method: 'POST',
-        body: formData
+      const response = await websocketClient.sendRequest("createGroup", {
+        sessionId,
+        groupName: groupName.trim(),
+        members: Array.isArray(members) ? members : [],
       });
-      
-      if (!response.ok) {
-        throw new Error(`Erro ao enviar arquivo: ${response.statusText}`);
+
+      // Validar resposta
+      if (!response || !response.groupId) {
+        const errorMsg = "Formato de resposta inválido do servidor";
+        console.error("createGroup:", errorMsg, response);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
       }
-      
-      const result = await response.json();
-      
-      // Adicionar mensagem ao histórico local
-      set(state => {
-        const currentMessages = state.groupMessages[groupId] || [];
-        
-        return {
-          groupMessages: {
-            ...state.groupMessages,
-            [groupId]: [...currentMessages, {
-              messageId: result.messageId,
-              senderId: currentUser.userId,
-              senderName: currentUser.displayName,
-              content: `Arquivo: ${file.name}`,
-              fileName: file.name,
-              fileUrl: result.fileUrl,
-              fileType: result.fileType,
-              timestamp: result.timestamp,
-              status: 'sent',
-              isOwn: true,
-              isFile: true
-            }]
-          }
-        };
-      });
-      
-      // Atualizar última mensagem do grupo
-      get().updateGroupLastMessage(groupId, `Arquivo: ${file.name}`, result.timestamp);
-      
-      return result;
+
+      // Adicionar grupo à lista local
+      set((state) => ({
+        groups: [
+          ...state.groups,
+          {
+            groupId: response.groupId,
+            name: groupName.trim(),
+            createdBy: currentUser.userId,
+            timestamp: response.timestamp || new Date().toISOString(),
+            members: [currentUser.userId, ...members],
+            admins: [currentUser.userId],
+          },
+        ],
+      }));
+
+      return response;
     } catch (error) {
-      console.error('Erro ao enviar arquivo em mensagem de grupo:', error);
+      console.error("Erro ao criar grupo:", error);
+      set({ fetchError: `Erro ao criar grupo: ${error.message}` });
       throw error;
     }
   },
-  
-  // Enviar arquivo em mensagem de grupo
-  sendGroupFile: async (groupId, file, fileType = null) => {
-    const { sessionId, currentUser } = get();
-    if (!sessionId || !currentUser || !groupId || !file) {
-      throw new Error('Parâmetros inválidos');
+
+  getGroupMembers: async (groupId) => {
+    const { sessionId, cachedGroupMembers } = get();
+
+    // Validação de parâmetros
+    if (!sessionId) {
+      const errorMsg = "Sessão não encontrada";
+      console.error("getGroupMembers:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
     }
-    
+
+    if (!groupId) {
+      const errorMsg = "ID do grupo não fornecido";
+      console.error("getGroupMembers:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
     try {
-      // Criar FormData para envio do arquivo
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('sessionId', sessionId);
-      formData.append('groupId', groupId);
-      if (fileType) {
-        formData.append('fileType', fileType);
+      // Verificar se já temos os membros em cache
+      if (
+        cachedGroupMembers[groupId] &&
+        cachedGroupMembers[groupId].length > 0
+      ) {
+        return cachedGroupMembers[groupId];
       }
-      
-      // Em modo mock, simular envio
-      if (websocketClient.mockMode) {
-        const mockResponse = {
-          messageId: 'file_group_' + Date.now(),
-          timestamp: Date.now(),
-          fileName: file.name,
-          fileUrl: URL.createObjectURL(file),
-          fileType: fileType || file.type
-        };
-        
-        // Adicionar mensagem ao histórico local
-        set(state => {
-          const currentMessages = state.groupMessages[groupId] || [];
-          
-          return {
-            groupMessages: {
-              ...state.groupMessages,
-              [groupId]: [...currentMessages, {
-                messageId: mockResponse.messageId,
-                senderId: currentUser.userId,
-                senderName: currentUser.displayName,
-                content: `Arquivo: ${file.name}`,
-                fileName: file.name,
-                fileUrl: mockResponse.fileUrl,
-                fileType: mockResponse.fileType,
-                timestamp: mockResponse.timestamp,
-                status: 'sent',
-                isOwn: true,
-                isFile: true
-              }]
-            }
-          };
-        });
-        
-        // Atualizar última mensagem do grupo
-        get().updateGroupLastMessage(groupId, `Arquivo: ${file.name}`, mockResponse.timestamp);
-        
-        return mockResponse;
-      }
-      
-      // Enviar para o servidor via API REST (não WebSocket)
-      const response = await fetch('/api/messages/group/file', {
-        method: 'POST',
-        body: formData
+
+      const response = await websocketClient.sendRequest("getGroupMembers", {
+        sessionId,
+        groupId,
       });
-      
-      if (!response.ok) {
-        throw new Error(`Erro ao enviar arquivo: ${response.statusText}`);
+
+      // Verificar se a resposta é um array (formato direto) ou um objeto com propriedade members
+      let members = [];
+
+      if (Array.isArray(response)) {
+        // Resposta direta como array
+        members = response;
+      } else if (
+        response &&
+        response.members &&
+        Array.isArray(response.members)
+      ) {
+        // Resposta no formato esperado {members: [...]}
+        members = response.members;
+      } else {
+        const errorMsg = "Formato de resposta inválido do servidor";
+        console.warn(
+          "getGroupMembers: Resposta inesperada do servidor:",
+          response
+        );
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
       }
-      
-      const result = await response.json();
-      
-      // Adicionar mensagem ao histórico local
-      set(state => {
-        const currentMessages = state.groupMessages[groupId] || [];
-        
-        return {
-          groupMessages: {
-            ...state.groupMessages,
-            [groupId]: [...currentMessages, {
-              messageId: result.messageId,
-              senderId: currentUser.userId,
-              senderName: currentUser.displayName,
-              content: `Arquivo: ${file.name}`,
-              fileName: file.name,
-              fileUrl: result.fileUrl,
-              fileType: result.fileType,
-              timestamp: result.timestamp,
-              status: 'sent',
-              isOwn: true,
-              isFile: true
-            }]
-          }
-        };
-      });
-      
-      // Atualizar última mensagem do grupo
-      get().updateGroupLastMessage(groupId, `Arquivo: ${file.name}`, result.timestamp);
-      
-      return result;
+
+      // Atualizar cache de membros
+      set((state) => ({
+        cachedGroupMembers: {
+          ...state.cachedGroupMembers,
+          [groupId]: members,
+        },
+      }));
+
+      return members;
     } catch (error) {
-      console.error('Erro ao enviar arquivo em mensagem de grupo:', error);
+      console.error(`Erro ao buscar membros do grupo ${groupId}:`, error);
+      set({ fetchError: `Erro ao buscar membros do grupo: ${error.message}` });
       throw error;
     }
   },
-  
-  // Funções de gerenciamento de grupo
+
   addUserToGroup: async (groupId, userId) => {
-    const { sessionId } = get();
-    if (!sessionId) return;
-    
+    const { sessionId, cachedGroupMembers } = get();
+
+    // Validação de parâmetros
+    if (!sessionId) {
+      const errorMsg = "Sessão não encontrada";
+      console.error("addUserToGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    if (!groupId || !userId) {
+      const errorMsg = "Parâmetros inválidos";
+      console.error("addUserToGroup:", errorMsg, { groupId, userId });
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
     try {
-      const response = await websocketClient.sendRequest('addUserToGroup', {
+      const response = await websocketClient.sendRequest("addUserToGroup", {
         sessionId,
         groupId,
-        userId
+        userId,
       });
-      
-      // Limpar o cache de membros do grupo para forçar uma nova busca
-      get().clearGroupCache(groupId);
-      
-      return response;
-    } catch (error) {
-      console.error('Erro ao adicionar usuário ao grupo:', error);
-      throw error;
-    }
-  },
-  
-  removeUserFromGroup: async (groupId, userId) => {
-    const { sessionId } = get();
-    if (!sessionId) return;
-    
-    try {
-      const response = await websocketClient.sendRequest('removeUserFromGroup', {
-        sessionId,
-        groupId,
-        userId
-      });
-      
-      // Limpar o cache de membros do grupo para forçar uma nova busca
-      get().clearGroupCache(groupId);
-      
-      return response;
-    } catch (error) {
-      console.error('Erro ao remover usuário do grupo:', error);
-      throw error;
-    }
-  },
-  
-  setGroupAdmin: async (groupId, userId) => {
-    const { sessionId } = get();
-    if (!sessionId) return;
-    
-    try {
-      const response = await websocketClient.sendRequest('setGroupAdmin', {
-        sessionId,
-        groupId,
-        userId
-      });
-      
-      // Limpar o cache de membros do grupo para forçar uma nova busca
-      get().clearGroupCache(groupId);
-      
-      return response;
-    } catch (error) {
-      console.error('Erro ao definir administrador do grupo:', error);
-      throw error;
-    }
-  },
-  
-  leaveGroup: async (groupId, deleteIfAdmin = false) => {
-    const { sessionId, currentUser } = get();
-    if (!sessionId || !currentUser) return;
-    
-    try {
-      const response = await websocketClient.sendRequest('leaveGroup', {
-        sessionId,
-        groupId,
-        deleteIfAdmin
-      });
-      
-      // Limpar o cache do grupo
-      get().clearGroupCache(groupId);
-      
-      // Atualizar a lista de grupos
-      await get().fetchGroups();
-      
-      return response;
-    } catch (error) {
-      console.error('Erro ao sair do grupo:', error);
-      throw error;
-    }
-  },
-  
-  deleteGroup: async (groupId) => {
-    const { sessionId } = get();
-    if (!sessionId) return;
-    
-    try {
-      const response = await websocketClient.sendRequest('deleteGroup', {
-        sessionId,
-        groupId
-      });
-      
-      // Limpar o cache do grupo
-      get().clearGroupCache(groupId);
-      
-      // Atualizar a lista de grupos
-      await get().fetchGroups();
-      
-      return response;
-    } catch (error) {
-      console.error('Erro ao excluir grupo:', error);
-      throw error;
-    }
-  },
-  
-  // Manipulador de eventos WebSocket
-  handleEvent: (eventType, data) => {
-    switch (eventType) {
-      case 'userStatusChanged':
-        get().handleUserStatusChanged(data);
-        break;
-      case 'newPrivateMessage':
-        get().handleNewPrivateMessage(data);
-        break;
-      case 'newGroupMessage':
-        get().handleNewGroupMessage(data);
-        break;
-      default:
-        console.log(`Evento não tratado: ${eventType}`, data);
-    }
-  },
-  
-  // Manipuladores de eventos específicos
-  handleUserStatusChanged: (data) => {
-    const { userId, status } = data;
-    
-    set(state => ({
-      userStatus: {
-        ...state.userStatus,
-        [userId]: status
+
+      // Validar resposta
+      if (!response || response.success !== true) {
+        const errorMsg =
+          response?.error || "Erro ao adicionar usuário ao grupo";
+        console.error("addUserToGroup:", errorMsg, response);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
       }
-    }));
-    
-    // Atualizar também na lista de usuários
-    set(state => ({
-      users: state.users.map(user => 
-        user.userId === userId ? { ...user, status } : user
-      )
+
+      // Limpar cache de membros para forçar recarregamento
+      set((state) => ({
+        cachedGroupMembers: {
+          ...state.cachedGroupMembers,
+          [groupId]: [],
+        },
+      }));
+
+      return response;
+    } catch (error) {
+      console.error(
+        `Erro ao adicionar usuário ${userId} ao grupo ${groupId}:`,
+        error
+      );
+      set({
+        fetchError: `Erro ao adicionar usuário ao grupo: ${error.message}`,
+      });
+      throw error;
+    }
+  },
+
+  removeUserFromGroup: async (groupId, userId) => {
+    const { sessionId, cachedGroupMembers } = get();
+
+    // Validação de parâmetros
+    if (!sessionId) {
+      const errorMsg = "Sessão não encontrada";
+      console.error("removeUserFromGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    if (!groupId || !userId) {
+      const errorMsg = "Parâmetros inválidos";
+      console.error("removeUserFromGroup:", errorMsg, { groupId, userId });
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    try {
+      const response = await websocketClient.sendRequest(
+        "removeUserFromGroup",
+        {
+          sessionId,
+          groupId,
+          userId,
+        }
+      );
+
+      // Validar resposta
+      if (!response || response.success !== true) {
+        const errorMsg = response?.error || "Erro ao remover usuário do grupo";
+        console.error("removeUserFromGroup:", errorMsg, response);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
+      // Limpar cache de membros para forçar recarregamento
+      set((state) => ({
+        cachedGroupMembers: {
+          ...state.cachedGroupMembers,
+          [groupId]: [],
+        },
+      }));
+
+      return response;
+    } catch (error) {
+      console.error(
+        `Erro ao remover usuário ${userId} do grupo ${groupId}:`,
+        error
+      );
+      set({ fetchError: `Erro ao remover usuário do grupo: ${error.message}` });
+      throw error;
+    }
+  },
+
+  setGroupAdmin: async (groupId, userId) => {
+    const { sessionId, cachedGroupMembers } = get();
+
+    // Validação de parâmetros
+    if (!sessionId) {
+      const errorMsg = "Sessão não encontrada";
+      console.error("setGroupAdmin:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    if (!groupId || !userId) {
+      const errorMsg = "Parâmetros inválidos";
+      console.error("setGroupAdmin:", errorMsg, { groupId, userId });
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    try {
+      const response = await websocketClient.sendRequest("setGroupAdmin", {
+        sessionId,
+        groupId,
+        userId,
+      });
+
+      // Validar resposta
+      if (!response || response.success !== true) {
+        const errorMsg =
+          response?.error || "Erro ao definir administrador do grupo";
+        console.error("setGroupAdmin:", errorMsg, response);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
+      // Limpar cache de membros para forçar recarregamento
+      set((state) => ({
+        cachedGroupMembers: {
+          ...state.cachedGroupMembers,
+          [groupId]: [],
+        },
+      }));
+
+      return response;
+    } catch (error) {
+      console.error(
+        `Erro ao definir usuário ${userId} como admin do grupo ${groupId}:`,
+        error
+      );
+      set({
+        fetchError: `Erro ao definir administrador do grupo: ${error.message}`,
+      });
+      throw error;
+    }
+  },
+
+  leaveGroup: async (groupId) => {
+    const { sessionId, currentUser, cachedGroupMembers } = get();
+
+    // Validação de parâmetros
+    if (!sessionId || !currentUser) {
+      const errorMsg = "Sessão não encontrada";
+      console.error("leaveGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    if (!groupId) {
+      const errorMsg = "ID do grupo não fornecido";
+      console.error("leaveGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    try {
+      const response = await websocketClient.sendRequest("leaveGroup", {
+        sessionId,
+        groupId,
+      });
+
+      // Validar resposta
+      if (!response || response.success !== true) {
+        const errorMsg = response?.error || "Erro ao sair do grupo";
+        console.error("leaveGroup:", errorMsg, response);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
+      // Remover grupo da lista local
+      set((state) => ({
+        groups: state.groups.filter((g) => g.groupId !== groupId),
+        cachedGroupMembers: {
+          ...state.cachedGroupMembers,
+          [groupId]: [],
+        },
+        groupMessages: {
+          ...state.groupMessages,
+          [groupId]: [],
+        },
+      }));
+
+      return response;
+    } catch (error) {
+      console.error(`Erro ao sair do grupo ${groupId}:`, error);
+      set({ fetchError: `Erro ao sair do grupo: ${error.message}` });
+      throw error;
+    }
+  },
+
+  deleteGroup: async (groupId) => {
+    const { sessionId, cachedGroupMembers } = get();
+
+    // Validação de parâmetros
+    if (!sessionId) {
+      const errorMsg = "Sessão não encontrada";
+      console.error("deleteGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    if (!groupId) {
+      const errorMsg = "ID do grupo não fornecido";
+      console.error("deleteGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    try {
+      const response = await websocketClient.sendRequest("deleteGroup", {
+        sessionId,
+        groupId,
+      });
+
+      // Validar resposta
+      if (!response || response.success !== true) {
+        const errorMsg = response?.error || "Erro ao excluir grupo";
+        console.error("deleteGroup:", errorMsg, response);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
+      // Remover grupo da lista local
+      set((state) => ({
+        groups: state.groups.filter((g) => g.groupId !== groupId),
+        cachedGroupMembers: {
+          ...state.cachedGroupMembers,
+          [groupId]: [],
+        },
+        groupMessages: {
+          ...state.groupMessages,
+          [groupId]: [],
+        },
+      }));
+
+      return response;
+    } catch (error) {
+      console.error(`Erro ao excluir grupo ${groupId}:`, error);
+      set({ fetchError: `Erro ao excluir grupo: ${error.message}` });
+      throw error;
+    }
+  },
+
+  // Notificações
+  addNotification: (notification) => {
+    if (!notification || !notification.message) return;
+
+    set((state) => ({
+      notifications: [
+        {
+          id: Date.now(),
+          timestamp: new Date().toISOString(),
+          ...notification,
+        },
+        ...state.notifications,
+      ],
     }));
   },
-  
-  handleNewPrivateMessage: (data) => {
-    const { senderId, content, timestamp } = data;
-    const { currentUser } = get();
-    
-    // Ignorar mensagens enviadas pelo próprio usuário (já tratadas pelo sendPrivateMessage)
-    if (currentUser && senderId === currentUser.userId) return;
-    
-    // Adicionar mensagem à conversa
-    set(state => {
-      const currentMessages = state.privateMessages[senderId] || [];
-      
+
+  clearNotification: (notificationId) => {
+    set((state) => ({
+      notifications: state.notifications.filter((n) => n.id !== notificationId),
+    }));
+  },
+
+  clearAllNotifications: () => {
+    set({ notifications: [] });
+  },
+
+  // Utilitários
+  getUser: async (userId) => {
+    const { users, sessionId } = get();
+
+    // Tentar encontrar no cache primeiro
+    const cachedUser = users.find((u) => u.userId === userId);
+    if (cachedUser) return cachedUser;
+
+    // Se não encontrado, buscar do servidor
+    if (!sessionId) {
+      throw new Error("Sessão não encontrada");
+    }
+
+    try {
+      const response = await websocketClient.sendRequest("getUser", {
+        sessionId,
+        userId,
+      });
+
+      // Verificar se a resposta é um objeto válido com userId
+      let user;
+
+      if (response && typeof response === "object") {
+        if (response.userId) {
+          // Resposta já é um objeto de usuário válido
+          user = response;
+        } else if (response.user && response.user.userId) {
+          // Resposta é um objeto com propriedade user
+          user = response.user;
+        } else {
+          console.warn("getUser: Resposta inesperada do servidor:", response);
+          throw new Error("Usuário não encontrado");
+        }
+      } else {
+        console.warn("getUser: Resposta inválida do servidor:", response);
+        throw new Error("Usuário não encontrado");
+      }
+
+      // Adicionar ao cache
+      set((state) => ({
+        users: [...state.users.filter((u) => u.userId !== userId), user],
+      }));
+
+      return user;
+    } catch (error) {
+      console.error(`Erro ao buscar usuário ${userId}:`, error);
+      throw error;
+    }
+  },
+
+  // Atualizar mensagem privada recebida
+  updatePrivateMessage: (message) => {
+    if (!message || !message.messageId) {
+      console.warn(
+        "[WebSocketStore] Tentativa de atualizar mensagem privada inválida:",
+        message
+      );
+      return;
+    }
+
+    const userId =
+      message.senderId === get().currentUser?.userId
+        ? message.recipientId
+        : message.senderId;
+
+    if (!userId) {
+      console.warn(
+        "[WebSocketStore] Não foi possível determinar o userId para a mensagem:",
+        message
+      );
+      return;
+    }
+
+    // Adicionar mensagem ao cache de mensagens privadas
+    set((state) => {
+      const currentMessages = state.privateMessages[userId] || [];
+
+      // Verificar se a mensagem já existe para evitar duplicação
+      if (currentMessages.some((m) => m.messageId === message.messageId)) {
+        return state;
+      }
+
       return {
         privateMessages: {
           ...state.privateMessages,
-          [senderId]: [...currentMessages, data]
-        }
+          [userId]: [...currentMessages, message],
+        },
       };
     });
-    
-    // Atualizar lista de conversas
-    set(state => {
-      const conversations = [...state.privateConversations];
-      const existingIndex = conversations.findIndex(c => c.userId === senderId);
-      
-      if (existingIndex >= 0) {
-        // Atualizar conversa existente
-        conversations[existingIndex] = {
-          ...conversations[existingIndex],
-          lastMessage: content,
-          timestamp,
-          unreadCount: (conversations[existingIndex].unreadCount || 0) + 1
-        };
-      } else {
-        // Adicionar nova conversa
-        const sender = state.users.find(u => u.userId === senderId);
-        if (sender) {
-          conversations.push({
-            userId: senderId,
-            username: sender.username,
-            displayName: sender.displayName,
-            lastMessage: content,
-            timestamp,
-            unreadCount: 1
-          });
-        }
-      }
-      
-      // Ordenar por timestamp mais recente
-      conversations.sort((a, b) => b.timestamp - a.timestamp);
-      
-      return { privateConversations: conversations };
-    });
-    
-    // Adicionar notificação
-    get().addNotification({
-      type: 'message',
-      title: data.senderName,
-      message: content,
-      timestamp
-    });
+
+    // Atualizar última mensagem do usuário
+    set((state) => ({
+      users: state.users.map((u) =>
+        u.userId === userId
+          ? {
+              ...u,
+              lastMessage: message.content,
+              lastMessageTime: message.timestamp,
+            }
+          : u
+      ),
+    }));
   },
-  
-  handleNewGroupMessage: (data) => {
-    const { groupId, senderId, content, timestamp } = data;
-    const { currentUser } = get();
-    
-    // Ignorar mensagens enviadas pelo próprio usuário (já tratadas pelo sendGroupMessage)
-    if (currentUser && senderId === currentUser.userId) return;
-    
-    // Adicionar mensagem ao grupo
-    set(state => {
+
+  // Atualizar mensagem de grupo recebida
+  updateGroupMessage: (message) => {
+    if (!message || !message.messageId || !message.groupId) {
+      console.warn(
+        "[WebSocketStore] Tentativa de atualizar mensagem de grupo inválida:",
+        message
+      );
+      return;
+    }
+
+    const { groupId } = message;
+
+    // Adicionar mensagem ao cache de mensagens do grupo
+    set((state) => {
       const currentMessages = state.groupMessages[groupId] || [];
-      
+
+      // Verificar se a mensagem já existe para evitar duplicação
+      if (currentMessages.some((m) => m.messageId === message.messageId)) {
+        return state;
+      }
+
       return {
         groupMessages: {
           ...state.groupMessages,
-          [groupId]: [...currentMessages, data]
-        }
+          [groupId]: [...currentMessages, message],
+        },
       };
     });
-    
-    // Atualizar lista de grupos
-    set(state => ({
-      groups: state.groups.map(group => {
-        if (group.groupId === groupId) {
-          return {
-            ...group,
-            lastMessage: content,
-            timestamp,
-            unreadCount: (group.unreadCount || 0) + 1
-          };
+
+    // Atualizar última mensagem do grupo
+    set((state) => ({
+      groups: state.groups.map((g) =>
+        g.groupId === groupId
+          ? {
+              ...g,
+              lastMessage: message.content,
+              lastMessageTime: message.timestamp,
+            }
+          : g
+      ),
+    }));
+  },
+
+  // Processar eventos recebidos do WebSocket
+  handleEvent: (eventType, data) => {
+    console.log(`[WebSocketStore] Evento recebido: ${eventType}`, data);
+
+    switch (eventType) {
+      case "newMessage":
+        // Processar nova mensagem recebida
+        if (data && (data.userId || data.groupId)) {
+          if (data.userId) {
+            // Mensagem privada
+            get().updatePrivateMessage(data);
+          } else if (data.groupId) {
+            // Mensagem de grupo
+            get().updateGroupMessage(data);
+          }
+
+          // Adicionar notificação
+          get().addNotification({
+            type: "message",
+            message: `Nova mensagem de ${data.senderName || "Alguém"}`,
+            variant: "default",
+          });
         }
-        return group;
-      })
-    }));
-    
-    // Adicionar notificação
-    get().addNotification({
-      type: 'groupMessage',
-      title: `${data.senderName} em ${state.groups.find(g => g.groupId === groupId)?.name || 'Grupo'}`,
-      message: content,
-      timestamp
-    });
+        break;
+
+      case "userStatusChange":
+        // Atualizar status de um usuário
+        if (data && data.userId) {
+          set((state) => ({
+            users: state.users.map((u) =>
+              u.userId === data.userId
+                ? { ...u, status: data.status, lastSeen: data.lastSeen }
+                : u
+            ),
+          }));
+        }
+        break;
+
+      case "groupUpdate":
+        // Atualizar informações de um grupo
+        if (data && data.groupId) {
+          set((state) => ({
+            groups: state.groups.map((g) =>
+              g.groupId === data.groupId ? { ...g, ...data } : g
+            ),
+          }));
+
+          // Limpar cache de membros do grupo
+          get().clearGroupMembersCache(data.groupId);
+        }
+        break;
+
+      case "error":
+        // Processar erro recebido do servidor
+        console.error("[WebSocketStore] Erro recebido do servidor:", data);
+        set({ fetchError: data?.message || "Erro recebido do servidor" });
+
+        // Adicionar notificação de erro
+        get().addNotification({
+          type: "error",
+          message: data?.message || "Ocorreu um erro no servidor",
+          variant: "destructive",
+        });
+        break;
+
+      default:
+        // Outros tipos de eventos não processados especificamente
+        console.log(
+          `[WebSocketStore] Evento não processado: ${eventType}`,
+          data
+        );
+    }
   },
-  
-  // Gerenciamento de notificações
-  addNotification: (notification) => {
-    set(state => ({
-      notifications: [...state.notifications, { id: Date.now(), ...notification }]
-    }));
-    
-    // Remover notificação após 5 segundos
-    setTimeout(() => {
-      get().removeNotification(notification.id);
-    }, 5000);
-  },
-  
-  removeNotification: (id) => {
-    set(state => ({
-      notifications: state.notifications.filter(n => n.id !== id)
-    }));
-  },
-  
-  clearNotifications: () => {
-    set({ notifications: [] });
-  }
 }));
 
-// Inicializar WebSocket quando o módulo for carregado
-setTimeout(() => {
-  useWebSocketStore.getState().initializeWebSocket();
-}, 1000);
-
-export default useWebSocketStore;
+export { useWebSocketStore };

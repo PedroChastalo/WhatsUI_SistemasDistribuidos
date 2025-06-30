@@ -51,24 +51,97 @@ export default function Chat({ chat, onBack }) {
 
   // Carregar mensagens e participantes
   useEffect(() => {
+    // Verificar se temos um chat válido
+    if (!chat) {
+      setError("Chat inválido - objeto de chat não fornecido");
+      setIsLoading(false);
+      return;
+    }
+    
+    // Log para debug
+    console.log("Chat recebido:", JSON.stringify(chat));
+
     const loadData = async () => {
       setIsLoading(true);
       setError("");
       try {
-        // Identificar o ID correto com base no tipo de chat
-        const chatId = chat.type === "user" ? chat.userId : chat.groupId;
+        // Determinar o tipo de chat e o ID apropriado
+        let chatId;
+        // Inferir o tipo de chat com base nas propriedades presentes
+        let chatType;
+        if (chat.type) {
+          chatType = chat.type;
+        } else if (chat.userId || chat.user) {
+          chatType = 'user';
+        } else if (chat.groupId || chat.group) {
+          chatType = 'group';
+        } else {
+          // Default para 'user' se não conseguir determinar
+          chatType = 'user';
+        }
+        
+        // Extrair o ID do chat com base no tipo
+        if (chatType === "private" || chatType === "user") {
+          // Tenta todas as possibilidades de ID para chats privados
+          chatId = chat.userId || chat.id || chat.receiverId || (chat.user && chat.user.id);
+          
+          // Se ainda não encontrou, tenta extrair do objeto user
+          if (!chatId && chat.user) {
+            chatId = chat.user.userId || chat.user.id;
+          }
+        } else if (chatType === "group") {
+          // Tenta todas as possibilidades de ID para grupos
+          chatId = chat.groupId || chat.id || (chat.group && chat.group.id);
+          
+          // Se ainda não encontrou, tenta extrair do objeto group
+          if (!chatId && chat.group) {
+            chatId = chat.group.groupId || chat.group.id;
+          }
+        }
+        
+        if (!chatId) {
+          console.error("Dados do chat incompletos:", chat);
+          throw new Error("ID do chat não encontrado - verifique a estrutura do objeto chat");
+        }
 
-        // Carregar mensagens
-        const chatMessages = await getMessages(chatId, chat.type);
-        setMessages(chatMessages || []);
-
-        // Carregar participantes se for um grupo
-        if (chat.type === "group") {
-          const members = await getGroupMembers(chatId);
-          setParticipants(members || []);
+        // Para chats que ainda não têm conversas (lastMessage = 'Iniciar conversa')
+        if (chat.lastMessage === "Iniciar conversa") {
+          // Não tenta carregar mensagens, apenas inicializa com array vazio
+          setMessages([]);
+          
+          // Se for grupo, ainda precisamos carregar os participantes
+          if (chat.type === "group" && chat.groupId) {
+            try {
+              const members = await getGroupMembers(chat.groupId);
+              setParticipants(Array.isArray(members) ? members : []);
+            } catch (groupErr) {
+              console.warn("Não foi possível carregar membros do grupo:", groupErr);
+              setParticipants([]);
+            }
+          }
+        } else {
+          // Para conversas existentes, carrega as mensagens normalmente
+          try {
+            const chatMessages = await getMessages(chatId, chat.type);
+            setMessages(Array.isArray(chatMessages) ? chatMessages : []);
+            
+            // Carregar participantes se for um grupo
+            if (chat.type === "group" && chat.groupId) {
+              const members = await getGroupMembers(chat.groupId);
+              setParticipants(Array.isArray(members) ? members : []);
+            }
+          } catch (msgErr) {
+            console.warn("Erro ao carregar mensagens:", msgErr);
+            // Se falhar ao carregar mensagens, inicializa com array vazio
+            setMessages([]);
+          }
         }
       } catch (err) {
+        console.error("Erro ao carregar dados do chat:", err);
         setError("Erro ao carregar dados: " + (err.message || "Desconhecido"));
+        // Mesmo com erro, inicializa com arrays vazios para permitir nova conversa
+        setMessages([]);
+        setParticipants([]);
       } finally {
         setIsLoading(false);
       }
@@ -77,7 +150,7 @@ export default function Chat({ chat, onBack }) {
     loadData();
     // Removidas as dependências que causavam o loop infinito
     // Apenas recarregar quando o chat mudar
-  }, [chat.userId, chat.groupId, chat.type]);
+  }, [chat?.userId, chat?.groupId, chat?.type]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -90,28 +163,73 @@ export default function Chat({ chat, onBack }) {
   // Função para enviar mensagem
   const handleSendMessage = async () => {
     if (!message.trim()) return;
+    if (!chat) {
+      setError("Chat inválido - objeto de chat não fornecido");
+      return;
+    }
 
     try {
-      // Identificar o ID correto com base no tipo de chat
-      const chatId = chat.type === "user" ? chat.userId : chat.groupId;
+      // Determinar o tipo de chat e o ID apropriado
+      let chatId;
+      // Inferir o tipo de chat com base nas propriedades presentes
+      let chatType;
+      if (chat.type) {
+        chatType = chat.type;
+      } else if (chat.userId || chat.user) {
+        chatType = 'user';
+      } else if (chat.groupId || chat.group) {
+        chatType = 'group';
+      } else {
+        // Default para 'user' se não conseguir determinar
+        chatType = 'user';
+      }
+      
+      // Extrair o ID do chat com base no tipo
+      if (chatType === "private" || chatType === "user") {
+        // Tenta todas as possibilidades de ID para chats privados
+        chatId = chat.userId || chat.id || chat.receiverId || (chat.user && chat.user.id);
+        
+        // Se ainda não encontrou, tenta extrair do objeto user
+        if (!chatId && chat.user) {
+          chatId = chat.user.userId || chat.user.id;
+        }
+      } else if (chatType === "group") {
+        // Tenta todas as possibilidades de ID para grupos
+        chatId = chat.groupId || chat.id || (chat.group && chat.group.id);
+        
+        // Se ainda não encontrou, tenta extrair do objeto group
+        if (!chatId && chat.group) {
+          chatId = chat.group.groupId || chat.group.id;
+        }
+      }
+      
+      if (!chatId) {
+        console.error("Dados do chat incompletos para envio de mensagem:", chat);
+        throw new Error("ID do destinatário não encontrado - verifique a estrutura do objeto chat");
+      }
+
+      // Normalizar o tipo para envio de mensagem
+      const messageType = (chatType === "private" || chatType === "user") ? "user" : "group";
 
       // Criar objeto de mensagem
       const newMessage = {
         content: message.trim(),
         recipientId: chatId,
-        type: chat.type,
+        type: messageType,
       };
 
       // Adicionar temporariamente à UI para feedback imediato
       const tempId = `temp-${Date.now()}`;
       const tempMessage = {
         id: tempId,
-        sender: currentUser?.displayName || "Você",
+        sender: currentUser?.displayName || currentUser?.username || "Você",
         senderId: currentUser?.userId,
+        senderName: currentUser?.displayName || currentUser?.username || "Você",
         content: message.trim(),
         timestamp: new Date().toISOString(),
         status: "sending",
         isOwn: true,
+        isFile: false
       };
 
       // Adicionar mensagem temporária ao estado
@@ -127,11 +245,18 @@ export default function Chat({ chat, onBack }) {
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === tempId
-            ? { ...msg, id: response?.id || tempId, status: "sent" }
+            ? { 
+                ...msg, 
+                id: response?.id || tempId, 
+                status: "sent",
+                timestamp: response?.timestamp || msg.timestamp 
+              }
             : msg
         )
       );
     } catch (err) {
+      console.error("Erro ao enviar mensagem:", err);
+      
       // Marcar mensagem como falha
       setMessages((prev) =>
         prev.map((msg) =>
@@ -147,59 +272,83 @@ export default function Chat({ chat, onBack }) {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
+    if (!chat || (!chat.userId && !chat.groupId)) {
+      setError("Chat inválido");
+      return;
+    }
+
+    setIsUploading(true);
+    setError("");
 
     try {
-      setIsUploading(true);
-      
       // Identificar o ID correto com base no tipo de chat
       const chatId = chat.type === "user" ? chat.userId : chat.groupId;
-      
+      if (!chatId) {
+        throw new Error("ID do destinatário não encontrado");
+      }
+
+      // Determinar o tipo de arquivo
+      let fileType = "document";
+      if (file.type.startsWith("image/")) {
+        fileType = "image";
+      } else if (file.type.startsWith("video/")) {
+        fileType = "video";
+      } else if (file.type.startsWith("audio/")) {
+        fileType = "audio";
+      }
+
       // Adicionar temporariamente à UI para feedback imediato
-      const tempId = `temp-file-${Date.now()}`;
+      const tempId = `temp-${Date.now()}`;
       const tempMessage = {
         id: tempId,
-        sender: currentUser?.displayName || "Você",
+        sender: currentUser?.displayName || currentUser?.username || "Você",
         senderId: currentUser?.userId,
-        content: `Arquivo: ${file.name}`,
-        fileName: file.name,
-        fileType: file.type,
+        senderName: currentUser?.displayName || currentUser?.username || "Você",
+        content: `Enviando arquivo: ${file.name}...`,
         timestamp: new Date().toISOString(),
         status: "sending",
         isOwn: true,
-        isFile: true
+        isFile: true,
+        fileName: file.name,
+        fileType,
       };
 
       // Adicionar mensagem temporária ao estado
       setMessages((prev) => [...prev, tempMessage]);
 
       // Enviar arquivo para o servidor
-      const response = await sendFile(file, chatId, chat.type, file.type);
+      const response = await sendFile(file, chatId, chat.type, fileType);
 
-      // Atualizar status da mensagem temporária
+      // Atualizar mensagem temporária com informações do arquivo enviado
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === tempId
-            ? { 
-                ...msg, 
-                id: response?.messageId || tempId, 
+            ? {
+                ...msg,
+                id: response?.id || tempId,
+                content: `Arquivo: ${file.name}`,
+                fileUrl: response?.fileUrl || "",
                 status: "sent",
-                fileUrl: response?.fileUrl || null
+                timestamp: response?.timestamp || msg.timestamp
               }
             : msg
         )
       );
     } catch (err) {
-      // Marcar mensagem como falha
+      console.error("Erro ao enviar arquivo:", err);
+      
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.status === "sending" && msg.isFile ? { ...msg, status: "failed" } : msg
+          msg.status === "sending" && msg.isFile
+            ? { ...msg, status: "failed", content: `Falha ao enviar: ${file.name}` }
+            : msg
         )
       );
-
       setError("Erro ao enviar arquivo: " + (err.message || "Desconhecido"));
     } finally {
       setIsUploading(false);
-      // Limpar o input de arquivo para permitir o upload do mesmo arquivo novamente
+      // Limpar input de arquivo
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -215,63 +364,106 @@ export default function Chat({ chat, onBack }) {
 
   // Funções para gerenciar participantes do grupo
   const handleAddParticipant = async (userId) => {
+    if (!chat?.groupId || !userId) {
+      setError("Informações inválidas para adicionar participante");
+      return;
+    }
+    
     try {
+      setIsLoading(true);
       await addUserToGroup(chat.groupId, userId);
-      // Recarregar participantes
+      
+      // Limpar cache e recarregar participantes
       const members = await getGroupMembers(chat.groupId);
-      setParticipants(members || []);
+      setParticipants(Array.isArray(members) ? members : []);
+      setError("");
     } catch (err) {
-      setError(
-        "Erro ao adicionar participante: " + (err.message || "Desconhecido")
-      );
+      console.error("Erro ao adicionar participante:", err);
+      setError("Erro ao adicionar participante: " + (err.message || "Desconhecido"));
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleRemoveParticipant = async (userId) => {
+    if (!chat?.groupId || !userId) {
+      setError("Informações inválidas para remover participante");
+      return;
+    }
+    
     try {
+      setIsLoading(true);
       await removeUserFromGroup(chat.groupId, userId);
-      // Recarregar participantes
+      
+      // Limpar cache e recarregar participantes
       const members = await getGroupMembers(chat.groupId);
-      setParticipants(members || []);
+      setParticipants(Array.isArray(members) ? members : []);
+      setError("");
     } catch (err) {
-      setError(
-        "Erro ao remover participante: " + (err.message || "Desconhecido")
-      );
+      console.error("Erro ao remover participante:", err);
+      setError("Erro ao remover participante: " + (err.message || "Desconhecido"));
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSetAdmin = async (userId) => {
+    if (!chat?.groupId || !userId) {
+      setError("Informações inválidas para definir administrador");
+      return;
+    }
+    
     try {
+      setIsLoading(true);
       await setGroupAdmin(chat.groupId, userId);
-      // Recarregar participantes
+      
+      // Limpar cache e recarregar participantes
       const members = await getGroupMembers(chat.groupId);
-      setParticipants(members || []);
+      setParticipants(Array.isArray(members) ? members : []);
+      setError("");
     } catch (err) {
-      setError(
-        "Erro ao definir administrador: " + (err.message || "Desconhecido")
-      );
+      console.error("Erro ao definir administrador:", err);
+      setError("Erro ao definir administrador: " + (err.message || "Desconhecido"));
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Verificar se o usuário atual é administrador do grupo
   const isCurrentUserAdmin = () => {
-    return participants.some(
-      (p) => p.userId === currentUser?.userId && p.isAdmin
-    );
+    if (!chat || chat.type !== "group" || !currentUser || !Array.isArray(participants)) {
+      return false;
+    }
+    
+    const participant = participants.find((p) => p.userId === currentUser.userId);
+    return participant && participant.role === "admin";
   };
 
   const handleLeaveGroup = async (shouldDeleteGroup = false) => {
+    if (!chat?.groupId) {
+      setError("ID do grupo não encontrado");
+      return;
+    }
+    
     try {
-      // Se o usuário é admin e escolheu excluir o grupo
-      if (shouldDeleteGroup && isCurrentUserAdmin()) {
+      setIsLoading(true);
+      
+      if (shouldDeleteGroup) {
         await deleteGroup(chat.groupId);
       } else {
-        // Caso contrário, apenas sair do grupo
-        await leaveGroup(chat.groupId, false);
+        await leaveGroup(chat.groupId, shouldDeleteGroup);
       }
-      onBack(); // Voltar para a lista de chats
+      
+      // Limpar erros e voltar para a lista de conversas
+      setError("");
+      onBack();
     } catch (err) {
-      setError("Erro ao sair do grupo: " + (err.message || "Desconhecido"));
+      console.error(`Erro ao ${shouldDeleteGroup ? "excluir" : "sair do"} grupo:`, err);
+      setError(
+        `Erro ao ${shouldDeleteGroup ? "excluir" : "sair do"} grupo: ` +
+          (err.message || "Desconhecido")
+      );
+      setIsLoading(false);
     }
   };
 
