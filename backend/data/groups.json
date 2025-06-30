@@ -25,5 +25,32 @@
     "createdAt" : 1751304752185,
     "lastMessage" : "Teste1 criou o grupo",
     "lastMessageTime" : 1751304752203
+  },
+  "fa724bf3-feff-484d-bceb-ae600496005d" : {
+    "groupId" : "fa724bf3-feff-484d-bceb-ae600496005d",
+    "name" : "Teste",
+    "adminId" : "791b23fa-47e3-4462-9544-07c4b6ae0aa2",
+    "members" : [ "791b23fa-47e3-4462-9544-07c4b6ae0aa2" ],
+    "createdAt" : 1751315816753,
+    "lastMessage" : "Pedro saiu do grupo",
+    "lastMessageTime" : 1751315840864
+  },
+  "9f96df77-6d12-481a-814d-bd5f6767ea09" : {
+    "groupId" : "9f96df77-6d12-481a-814d-bd5f6767ea09",
+    "name" : "Teste notificacao",
+    "adminId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
+    "members" : [ "f05d57ec-5161-4621-8abf-94a0e1574649", "791b23fa-47e3-4462-9544-07c4b6ae0aa2" ],
+    "createdAt" : 1751318376334,
+    "lastMessage" : "Pedro criou o grupo",
+    "lastMessageTime" : 1751318376351
+  },
+  "09f1bab4-0040-4ddf-8832-29c689ff5566" : {
+    "groupId" : "09f1bab4-0040-4ddf-8832-29c689ff5566",
+    "name" : "Pedro Admin",
+    "adminId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
+    "members" : [ "f05d57ec-5161-4621-8abf-94a0e1574649", "791b23fa-47e3-4462-9544-07c4b6ae0aa2" ],
+    "createdAt" : 1751325034158,
+    "lastMessage" : "Oii",
+    "lastMessageTime" : 1751325037919
   }
 }

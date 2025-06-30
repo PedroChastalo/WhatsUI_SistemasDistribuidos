@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Search, Plus, MessageCircle, Users, Settings, LogOut, AlertCircle, Bell, UserPlus } from 'lucide-react'
+import { Search, Plus, MessageCircle, Users, Settings, LogOut, AlertCircle, Bell, UserPlus, Check, X } from 'lucide-react'
 import CreateGroupModal from './CreateGroupModal'
 import { useWebSocket } from '@/contexts/WebSocketContext'
 import GroupRequestsModal from './GroupRequestsModal'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 export default function Dashboard({ onSelectChat, onLogout }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -159,6 +160,12 @@ export default function Dashboard({ onSelectChat, onLogout }) {
     
   // Verificar se há solicitações pendentes
   const hasRequests = pendingGroupRequests && pendingGroupRequests.length > 0
+  
+  // Depurar solicitações pendentes
+  console.log('[Dashboard] Solicitações pendentes:', pendingGroupRequests)
+  
+  // Referência para o popover de notificações
+  const notificationPopoverRef = useRef(null)
 
   return (
     <div className="h-screen bg-gray-50 flex">
@@ -167,20 +174,24 @@ export default function Dashboard({ onSelectChat, onLogout }) {
         {/* Cabeçalho */}
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">WhatsUT</h2>
+            <div className="flex items-center">
+              <h2 className="text-lg font-semibold text-gray-800 mr-2">WhatsUT</h2>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setShowRequestsModal(true)} 
+                title="Solicitações de grupo"
+                className="relative h-8 w-8 p-0"
+              >
+                <Bell size={16} />
+                {hasRequests && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px]">
+                    {pendingGroupRequests.length}
+                  </span>
+                )}
+              </Button>
+            </div>
             <div className="flex space-x-2">
-              {hasRequests && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setShowRequestsModal(true)} 
-                  title="Solicitações de grupo"
-                  className="relative"
-                >
-                  <Bell size={18} />
-                  <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
-                </Button>
-              )}
               <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
                 <LogOut size={18} />
               </Button>
@@ -382,7 +393,89 @@ export default function Dashboard({ onSelectChat, onLogout }) {
       </div>
 
       {/* Área principal */}
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
+      <div className="flex-1 flex items-center justify-center bg-gray-50 relative">
+        {/* Ícone de notificações na barra lateral direita */}
+        <div className="absolute right-4 bottom-4 flex flex-col gap-2">
+          {hasRequests && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button 
+                  variant="secondary" 
+                  size="icon" 
+                  className="h-10 w-10 rounded-full shadow-md relative bg-white hover:bg-gray-100"
+                >
+                  <Bell size={20} />
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs">
+                    {pendingGroupRequests.length}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-3 border-b">
+                  <h3 className="font-medium">Solicitações de Grupo</h3>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto">
+                  {pendingGroupRequests.map((request) => (
+                    <div 
+                      key={`${request.userId}-${request.groupId}`} 
+                      className="p-3 border-b hover:bg-gray-50 flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-gray-100 text-gray-600">
+                            {request.userName?.charAt(0).toUpperCase() || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium">{request.userName}</p>
+                          <p className="text-xs text-gray-500">Quer entrar no grupo</p>
+                        </div>
+                      </div>
+                      <div className="flex space-x-1">
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                          onClick={() => handleRespondToRequest(request.userId, request.groupId, true)}
+                        >
+                          <Check size={14} />
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleRespondToRequest(request.userId, request.groupId, false)}
+                        >
+                          <X size={14} />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="p-2 border-t">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full" 
+                    onClick={() => setShowRequestsModal(true)}
+                  >
+                    Ver todas as solicitações
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+          <Button 
+            variant="secondary" 
+            size="icon" 
+            className="h-10 w-10 rounded-full shadow-md bg-white hover:bg-gray-100"
+            onClick={handleLogout}
+            title="Sair"
+          >
+            <LogOut size={20} />
+          </Button>
+        </div>
+        
         <div className="text-center">
           <MessageCircle size={64} className="mx-auto text-gray-400 mb-4" />
           <h3 className="text-xl font-medium text-gray-900 mb-2">Bem-vindo ao WhatsUT</h3>

@@ -8,7 +8,10 @@ import { X, Check, AlertCircle, Bell, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const Notifications = () => {
-  const { notifications, removeNotification, respondToGroupRequest } = useWebSocketStore();
+  const { notifications, clearNotification, respondToGroupRequest } = useWebSocketStore();
+
+  // Depurar notificações
+  console.log('[Notifications] Renderizando notificações:', notifications);
 
   if (notifications.length === 0) return null;
   
@@ -18,7 +21,7 @@ const Notifications = () => {
       if (notification.data && notification.data.userId && notification.data.groupId) {
         await respondToGroupRequest(notification.data.userId, notification.data.groupId, accept);
       }
-      removeNotification(notification.id);
+      clearNotification(notification.id);
     } catch (error) {
       console.error('Erro ao responder à solicitação:', error);
     }
@@ -33,8 +36,10 @@ const Notifications = () => {
         return <Bell size={18} className="text-blue-500 mr-2 flex-shrink-0" />;
       case 'success':
         return <Check size={18} className="text-green-500 mr-2 flex-shrink-0" />;
-      default:
+      case 'message':
         return <Info size={18} className="text-blue-500 mr-2 flex-shrink-0" />;
+      default:
+        return <Info size={18} className="text-gray-500 mr-2 flex-shrink-0" />;
     }
   };
   
@@ -44,7 +49,8 @@ const Notifications = () => {
       case 'error': return 'border-red-500';
       case 'groupRequest': return 'border-blue-500';
       case 'success': return 'border-green-500';
-      default: return 'border-blue-500';
+      case 'message': return 'border-blue-500';
+      default: return 'border-gray-300';
     }
   };
 
@@ -95,7 +101,7 @@ const Notifications = () => {
                 )}
               </div>
               <button
-                onClick={() => removeNotification(notification.id)}
+                onClick={() => clearNotification(notification.id)}
                 className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 ml-2"
               >
                 <X size={16} />

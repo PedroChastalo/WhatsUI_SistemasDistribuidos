@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Check, X, User } from 'lucide-react';
@@ -11,6 +11,9 @@ const GroupRequestsModal = ({ isOpen, onClose, requests = [], onRespond }) => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Solicitações de Grupo</DialogTitle>
+            <DialogDescription>
+              Gerencie as solicitações de entrada em grupos que você administra
+            </DialogDescription>
           </DialogHeader>
           <div className="py-6 text-center text-gray-500">
             Não há solicitações pendentes
@@ -28,6 +31,9 @@ const GroupRequestsModal = ({ isOpen, onClose, requests = [], onRespond }) => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Solicitações de Grupo</DialogTitle>
+          <DialogDescription>
+            Gerencie as solicitações de entrada em grupos que você administra
+          </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <div className="space-y-4 max-h-[400px] overflow-y-auto">

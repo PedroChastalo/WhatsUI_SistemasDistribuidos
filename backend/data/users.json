@@ -5,7 +5,7 @@
     "email" : "teste@email.com",
     "displayName" : "Usuário Teste",
     "passwordHash" : "$2a$12$/YvSBOp9QZSuXPy5893TKejNKLElpO5fiRmhh56d4to8a61PGQb.m",
-    "status" : "online",
+    "status" : "offline",
     "lastSeen" : 1751301961161,
     "active" : true
   },
@@ -15,7 +15,7 @@
     "email" : "Teste1@email.com",
     "displayName" : "Teste1",
     "passwordHash" : "$2a$12$jadnzQciP04E4Usm2uEz6.mXMrkFpdWjwZvgLYfs3Z9iXVBlOWlvm",
-    "status" : "online",
+    "status" : "offline",
     "lastSeen" : 1751301971405,
     "active" : true
   },
@@ -25,7 +25,7 @@
     "email" : "Teste@email.com",
     "displayName" : "Teste1",
     "passwordHash" : "$2a$12$MYoJwbeM1R8Dm/eH71DgeelLadTDBmV/pU8fRYB2HuqgOvhVCORHO",
-    "status" : "online",
+    "status" : "offline",
     "lastSeen" : 1751301975545,
     "active" : true
   },
@@ -35,7 +35,7 @@
     "email" : "Teste3@email.com",
     "displayName" : "Teste1",
     "passwordHash" : "$2a$12$tVAYnpLVYXTYlXdIGGeGWelR2TAz5fYCwZzmitFDLufdpG/RvqljO",
-    "status" : "online",
+    "status" : "offline",
     "lastSeen" : 1751304015601,
     "active" : true
   },
@@ -45,7 +45,7 @@
     "email" : "pedro@email.com",
     "displayName" : "Pedro",
     "passwordHash" : "$2a$12$sTvqvS9Ayh4.JXqD527LueOaIzXMOgz1YuZHQYh0xcWtE7ZTlPwUO",
-    "status" : "online",
+    "status" : "offline",
     "lastSeen" : 1751304803191,
     "active" : true
   },
@@ -55,7 +55,7 @@
     "email" : "vitor@email.com",
     "displayName" : "Vitor",
     "passwordHash" : "$2a$12$.mJaS04m6OsFYxAvehRlQ.ftugC/IT4vEJHDX09r5viMWmijnTGuy",
-    "status" : "online",
+    "status" : "offline",
     "lastSeen" : 1751304820843,
     "active" : true
   }

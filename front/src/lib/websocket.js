@@ -349,10 +349,18 @@ class WebSocketClient {
         const { resolve, reject } = this.pendingRequests.get(message.requestId);
         this.pendingRequests.delete(message.requestId);
         
-        if (message.success) {
-          resolve(message.data);
-        } else {
+        if (message.success === false) {
+          // Apenas rejeitar se success for explicitamente false
           reject(new Error(message.error || 'Erro desconhecido'));
+        } else {
+          // Se success for true ou não estiver definido, consideramos sucesso
+          // Retornar message.data ou um objeto vazio se não houver dados
+          // Incluir qualquer mensagem de texto na resposta
+          const responseData = message.data || {};
+          if (message.message) {
+            responseData.message = message.message;
+          }
+          resolve(responseData);
         }
         return;
       }

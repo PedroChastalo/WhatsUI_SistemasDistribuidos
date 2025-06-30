@@ -202,6 +202,9 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
                 case "requestJoinGroup":
                     handleRequestJoinGroup(conn, data, response);
                     break;
+                case "respondJoinGroup":
+                    handleRespondJoinGroup(conn, data, response);
+                    break;
                 default:
                     response.put("success", false);
                     response.put("error", "Tipo de requisição desconhecido: " + type);
@@ -740,6 +743,152 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         }
     }
 
+    /**
+     * Processa a resposta a uma solicitação de entrada em grupo
+     * @param conn Conexão WebSocket
+     * @param data Dados da requisição
+     * @param response Resposta a ser enviada
+     * @throws Exception Em caso de erro
+     */
+    private void handleRespondJoinGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
+        String sessionId = sessions.get(conn);
+        if (sessionId == null) {
+            response.put("success", false);
+            response.put("error", "Usuário não autenticado");
+            return;
+        }
+        
+        String groupId = (String) data.get("groupId");
+        String userId = (String) data.get("userId");
+        boolean accept = (boolean) data.get("accept");
+        
+        if (groupId == null || userId == null) {
+            response.put("success", false);
+            response.put("error", "Parâmetros incompletos");
+            return;
+        }
+        
+        // Obtenha o adminId a partir da sessão
+        String adminId = SessionManager.getUserIdFromSession(sessionId);
+        if (adminId == null) {
+            response.put("success", false);
+            response.put("error", "Sessão inválida");
+            return;
+        }
+        
+        // Obter todos os grupos do usuário
+        List<Map<String, Object>> userGroups = groupService.getGroups(sessionId);
+        
+        // Encontrar o grupo pelo ID
+        Map<String, Object> groupMap = userGroups.stream()
+            .filter(g -> groupId.equals(g.get("groupId")))
+            .findFirst().orElse(null);
+            
+        if (groupMap == null) {
+            response.put("success", false);
+            response.put("error", "Grupo não encontrado ou você não é membro");
+            return;
+        }
+        
+        // Verificar se o usuário logado é o admin do grupo
+        String groupAdminId = (String) groupMap.get("adminId");
+        if (!groupAdminId.equals(adminId)) {
+            response.put("success", false);
+            response.put("error", "Apenas o admin pode aceitar solicitações");
+            return;
+        }
+        
+        // Verificar se o usuário solicitante existe
+        User requestUser = userService.getUserById(sessionId, userId);
+        if (requestUser == null) {
+            response.put("success", false);
+            response.put("error", "Usuário solicitante não encontrado");
+            return;
+        }
+        
+        if (accept) {
+            try {
+                // Adicionar o usuário ao grupo
+                groupService.addUserToGroup(sessionId, groupId, userId);
+                
+                // Notificar o usuário que foi aceito no grupo, se estiver online
+                WebSocket userConn = findConnectionByUserId(userId);
+                System.out.println("[handleRespondJoinGroup] Tentando notificar usuário " + userId + " sobre aceitação. Conexão encontrada: " + (userConn != null));
+                
+                if (userConn != null) {
+                    Map<String, Object> notification = new HashMap<>();
+                    notification.put("type", "joinGroupAccepted");
+                    notification.put("groupId", groupId);
+                    notification.put("groupName", (String) groupMap.get("name"));
+                    
+                    String notificationJson = objectMapper.writeValueAsString(notification);
+                    System.out.println("[handleRespondJoinGroup] Enviando notificação de aceitação: " + notificationJson);
+                    
+                    userConn.send(notificationJson);
+                    System.out.println("[handleRespondJoinGroup] Notificação de aceitação enviada com sucesso");
+                }
+                
+                response.put("success", true);
+                response.put("message", "Usuário adicionado ao grupo com sucesso");
+            } catch (Exception e) {
+                response.put("success", false);
+                response.put("error", "Erro ao adicionar usuário ao grupo: " + e.getMessage());
+            }
+        } else {
+            // Notificar o usuário que foi rejeitado, se estiver online
+            WebSocket userConn = findConnectionByUserId(userId);
+            System.out.println("[handleRespondJoinGroup] Tentando notificar usuário " + userId + " sobre rejeição. Conexão encontrada: " + (userConn != null));
+            
+            if (userConn != null) {
+                Map<String, Object> notification = new HashMap<>();
+                notification.put("type", "joinGroupRejected");
+                notification.put("groupId", groupId);
+                notification.put("groupName", (String) groupMap.get("name"));
+                
+                String notificationJson = objectMapper.writeValueAsString(notification);
+                System.out.println("[handleRespondJoinGroup] Enviando notificação de rejeição: " + notificationJson);
+                
+                userConn.send(notificationJson);
+                System.out.println("[handleRespondJoinGroup] Notificação de rejeição enviada com sucesso");
+            }
+            
+            response.put("success", true);
+            response.put("message", "Solicitação rejeitada com sucesso");
+        }
+    }
+    
+    /**
+     * Processa uma solicitação para entrar em um grupo
+     * @param conn Conexão WebSocket
+     * @param data Dados da requisição
+     * @param response Resposta a ser enviada
+     * @throws Exception Em caso de erro
+     */
+    /**
+     * Encontra a conexão WebSocket de um usuário pelo seu ID
+     * @param userId ID do usuário
+     * @return Conexão WebSocket ou null se não encontrada
+     */
+    private WebSocket findConnectionByUserId(String userId) {
+        for (Map.Entry<WebSocket, String> entry : sessions.entrySet()) {
+            String sessionId = entry.getValue();
+            if (sessionId != null) {
+                String sessionUserId = SessionManager.getUserIdFromSession(sessionId);
+                if (userId.equals(sessionUserId)) {
+                    return entry.getKey();
+                }
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Processa uma solicitação para entrar em um grupo
+     * @param conn Conexão WebSocket
+     * @param data Dados da requisição
+     * @param response Resposta a ser enviada
+     * @throws Exception Em caso de erro
+     */
     private void handleRequestJoinGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -800,18 +949,32 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         );
 
         if (adminConn != null) {
-            // Admin online: envie notificação
-            Map<String, Object> notify = new HashMap<>();
-            notify.put("type", "joinGroupRequest");
-            notify.put("groupId", (String) groupMap.get("groupId"));
-            notify.put("userId", user.getUserId());
-            notify.put("userName", user.getDisplayName());
-            notify.put("groupName", (String) groupMap.get("name"));
-            adminConn.send(objectMapper.writeValueAsString(notify));
-        } else {
-            // Admin offline: salve o pedido
-            pendingJoinRequestDAO.addRequest(adminId, req);
+        // Admin online: envie notificação
+        Map<String, Object> notify = new HashMap<>();
+        notify.put("type", "joinGroupRequest");
+        notify.put("groupId", (String) groupMap.get("groupId"));
+        notify.put("userId", user.getUserId());
+        notify.put("userName", user.getDisplayName());
+        notify.put("groupName", (String) groupMap.get("name"));
+        
+        // Log detalhado antes de enviar a notificação
+        System.out.println("[WhatsUTWebSocketServer] Enviando notificação de solicitação de grupo para admin " + adminId);
+        System.out.println("[WhatsUTWebSocketServer] Detalhes da notificação: " + notify);
+        
+        try {
+            String notifyJson = objectMapper.writeValueAsString(notify);
+            System.out.println("[WhatsUTWebSocketServer] JSON da notificação: " + notifyJson);
+            adminConn.send(notifyJson);
+            System.out.println("[WhatsUTWebSocketServer] Notificação enviada com sucesso!");
+        } catch (Exception e) {
+            System.err.println("[WhatsUTWebSocketServer] Erro ao enviar notificação: " + e.getMessage());
+            e.printStackTrace();
         }
+    } else {
+        // Admin offline: salve o pedido
+        System.out.println("[WhatsUTWebSocketServer] Admin " + adminId + " está offline. Salvando solicitação para entrega posterior.");
+        pendingJoinRequestDAO.addRequest(adminId, req);
+    }
 
         response.put("success", true);
         response.put("message", "Pedido enviado ao admin do grupo.");

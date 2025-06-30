@@ -1216,16 +1216,14 @@ const useWebSocketStore = create((set, get) => ({
         throw new Error("ID do grupo não fornecido");
       }
       
+      console.log("[WebSocket] Enviando requisição: requestJoinGroup", { groupId });
+      
       // Enviar requisição para solicitar entrada no grupo
       const response = await websocketClient.sendRequest("requestJoinGroup", {
-        sessionId,
         groupId
       });
       
-      // Validar resposta
-      if (!response || !response.success) {
-        throw new Error(response?.error || "Erro ao solicitar entrada no grupo");
-      }
+      console.log("[WebSocket] Resposta recebida para requestJoinGroup:", response);
       
       set({ isLoading: false });
       
@@ -1233,7 +1231,7 @@ const useWebSocketStore = create((set, get) => ({
       get().addNotification({
         id: Date.now(),
         title: "Solicitação enviada",
-        message: "Sua solicitação para entrar no grupo foi enviada ao administrador.",
+        message: response?.message || "Sua solicitação para entrar no grupo foi enviada ao administrador.",
         type: "info",
         timestamp: Date.now()
       });
@@ -1601,6 +1599,7 @@ const useWebSocketStore = create((set, get) => ({
             type: "message",
             message: `Nova mensagem de ${data.senderName || "Alguém"}`,
             variant: "default",
+            timestamp: Date.now()
           });
         }
         break;
@@ -1631,53 +1630,100 @@ const useWebSocketStore = create((set, get) => ({
           get().clearGroupMembersCache(data.groupId);
         }
         break;
-
+        
       case "joinGroupRequest":
         // Processar solicitação de entrada em grupo
-        if (data && data.groupId && data.userId && data.userName) {
-          // Adicionar à lista de solicitações pendentes
-          set(state => ({
-            pendingGroupRequests: [
-              ...state.pendingGroupRequests,
-              {
-                groupId: data.groupId,
+        console.log("[WebSocketStore] Recebida solicitação de entrada em grupo:", data);
+        console.log("[WebSocketStore] Estado atual - grupos:", get().groups);
+        console.log("[WebSocketStore] Estado atual - usuário:", get().currentUser);
+        
+        if (data && data.groupId && data.userId) {
+          // Verificar se o usuário atual é o administrador do grupo
+          const currentUser = get().currentUser;
+          const groups = get().groups;
+          
+          console.log("[WebSocketStore] Verificando se o usuário atual é admin do grupo:", {
+            currentUserId: currentUser?.userId,
+            groups: groups,
+            targetGroupId: data.groupId
+          });
+          
+          // Encontrar o grupo na lista de grupos do usuário
+          const targetGroup = groups.find(g => g.groupId === data.groupId);
+          
+          if (targetGroup && currentUser && targetGroup.adminId === currentUser.userId) {
+            console.log("[WebSocketStore] Usuário atual é admin do grupo, adicionando solicitação pendente");
+            
+            // Adicionar à lista de solicitações pendentes
+            set((state) => ({
+              pendingGroupRequests: [
+                ...state.pendingGroupRequests.filter(
+                  req => !(req.userId === data.userId && req.groupId === data.groupId)
+                ),
+                data
+              ]
+            }));
+            
+            // Adicionar notificação
+            get().addNotification({
+              type: "groupRequest",
+              title: "Solicitação de grupo",
+              message: `${data.userName || data.username || "Alguém"} solicitou entrada no grupo ${targetGroup.name || data.groupName || data.groupId}`,
+              variant: "info",
+              timestamp: Date.now(),
+              data: {
                 userId: data.userId,
-                userName: data.userName,
-                timestamp: Date.now()
+                groupId: data.groupId,
+                userName: data.userName || data.username,
+                groupName: targetGroup.name || data.groupName
               }
-            ]
-          }));
+            });
+          } else {
+            console.log("[WebSocketStore] Usuário atual não é admin do grupo ou grupo não encontrado");
+          }
+        } else {
+          console.warn("[WebSocketStore] Dados de solicitação de grupo incompletos:", data);
+        }
+        break;
+
+      case "joinGroupAccepted":
+        // Processar aceitação de solicitação de entrada em grupo
+        console.log("[WebSocketStore] Solicitação de entrada em grupo aceita:", data);
+        console.log("[WebSocketStore] Estado atual - grupos antes da atualização:", get().groups);
+        console.log("[WebSocketStore] Estado atual - usuário:", get().currentUser);
+        
+        if (data && data.groupId && data.groupName) {
+          // Atualizar lista de grupos
+          get().fetchGroups();
           
           // Adicionar notificação
           get().addNotification({
-            id: Date.now(),
-            type: "groupRequest",
-            title: "Nova solicitação de grupo",
-            message: `${data.userName} quer entrar no seu grupo`,
-            timestamp: Date.now(),
-            data: {
-              groupId: data.groupId,
-              userId: data.userId
-            }
+            type: "success",
+            title: "Solicitação aceita",
+            message: `Sua solicitação para entrar no grupo ${data.groupName} foi aceita!`,
+            variant: "success",
+            timestamp: Date.now()
           });
         }
         break;
         
-      case "error":
-        // Processar erro recebido do servidor
-        console.error("[WebSocketStore] Erro recebido do servidor:", data);
-        set({ fetchError: data?.message || "Erro recebido do servidor" });
-
-        // Adicionar notificação de erro
-        get().addNotification({
-          id: Date.now(),
-          type: "error",
-          title: "Erro",
-          message: data?.message || "Ocorreu um erro no servidor",
-          timestamp: Date.now()
-        });
+      case "joinGroupRejected":
+        // Processar rejeição de solicitação de entrada em grupo
+        console.log("[WebSocketStore] Solicitação de entrada em grupo rejeitada:", data);
+        console.log("[WebSocketStore] Estado atual - usuário:", get().currentUser);
+        
+        if (data && data.groupId && data.groupName) {
+          // Adicionar notificação
+          get().addNotification({
+            type: "error",
+            title: "Solicitação rejeitada",
+            message: `Sua solicitação para entrar no grupo ${data.groupName} foi rejeitada.`,
+            variant: "error",
+            timestamp: Date.now()
+          });
+        }
         break;
-
+        
       default:
         // Outros tipos de eventos não processados especificamente
         console.log(

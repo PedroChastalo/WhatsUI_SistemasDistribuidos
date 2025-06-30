@@ -92,5 +92,68 @@
     "fileUrl" : null,
     "fileType" : null,
     "groupMessage" : true
+  } ],
+  "fa724bf3-feff-484d-bceb-ae600496005d" : [ {
+    "messageId" : "1b8a87f0-a20a-4da6-9a45-dde7f7c9cb11",
+    "senderId" : "system",
+    "senderName" : "Sistema",
+    "receiverId" : "fa724bf3-feff-484d-bceb-ae600496005d",
+    "content" : "Vitor criou o grupo",
+    "timestamp" : 1751315816761,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  }, {
+    "messageId" : "f724babf-ac2d-4a6d-a3a5-8bdd04733acb",
+    "senderId" : "791b23fa-47e3-4462-9544-07c4b6ae0aa2",
+    "senderName" : "Vitor",
+    "receiverId" : "fa724bf3-feff-484d-bceb-ae600496005d",
+    "content" : "SBGBRGBIBGIRBIGLBIG",
+    "timestamp" : 1751315822257,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  }, {
+    "messageId" : "d8168670-3c17-4f99-b08e-61f963e10d73",
+    "senderId" : "system",
+    "senderName" : "Sistema",
+    "receiverId" : "fa724bf3-feff-484d-bceb-ae600496005d",
+    "content" : "Pedro saiu do grupo",
+    "timestamp" : 1751315840860,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  } ],
+  "9f96df77-6d12-481a-814d-bd5f6767ea09" : [ {
+    "messageId" : "04f14e09-be6f-4807-b928-c63cdf335db2",
+    "senderId" : "system",
+    "senderName" : "Sistema",
+    "receiverId" : "9f96df77-6d12-481a-814d-bd5f6767ea09",
+    "content" : "Pedro criou o grupo",
+    "timestamp" : 1751318376347,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  } ],
+  "09f1bab4-0040-4ddf-8832-29c689ff5566" : [ {
+    "messageId" : "65e83b3b-1c1a-44a6-bf17-eacf0985ab06",
+    "senderId" : "system",
+    "senderName" : "Sistema",
+    "receiverId" : "09f1bab4-0040-4ddf-8832-29c689ff5566",
+    "content" : "Pedro criou o grupo",
+    "timestamp" : 1751325034186,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
+  }, {
+    "messageId" : "0181cbb7-4918-471c-bf3c-f0a9e48e1fba",
+    "senderId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
+    "senderName" : "Pedro",
+    "receiverId" : "09f1bab4-0040-4ddf-8832-29c689ff5566",
+    "content" : "Oii",
+    "timestamp" : 1751325037916,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
   } ]
 }
