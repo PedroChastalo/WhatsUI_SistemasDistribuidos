@@ -1,0 +1,32 @@
+{
+  "a6b074f7-f1ba-4b70-8291-ee0b67e609ce" : {
+    "userId" : "a6b074f7-f1ba-4b70-8291-ee0b67e609ce",
+    "username" : "teste",
+    "email" : "teste@email.com",
+    "displayName" : "Usuário Teste",
+    "passwordHash" : "$2a$12$YQ4K4HJB/7UstyE71kQtMedYp0iUXbUWt/uqrDk0OdmcS5gcMcuvy",
+    "status" : "online",
+    "lastSeen" : 1751252552484,
+    "active" : true
+  },
+  "8628bdec-17c2-4777-817e-b9c744a31ba1" : {
+    "userId" : "8628bdec-17c2-4777-817e-b9c744a31ba1",
+    "username" : "Teste1",
+    "email" : "Teste1@email.com",
+    "displayName" : "Teste1",
+    "passwordHash" : "$2a$12$Q7BREo9Gy914BWyNkdx9fufOxnkho2YHLjlotsUucQr3xezQclpNq",
+    "status" : "online",
+    "lastSeen" : 1751252589949,
+    "active" : true
+  },
+  "7e5ced96-71c9-4135-8f72-732e232a6ce1" : {
+    "userId" : "7e5ced96-71c9-4135-8f72-732e232a6ce1",
+    "username" : "Teste1",
+    "email" : "Teste@email.com",
+    "displayName" : "Teste1",
+    "passwordHash" : "$2a$12$kI1GB1ogET6FGvAPltCTO.dECmYm3wVNae9HRDDRP5v84fa9qLjFS",
+    "status" : "online",
+    "lastSeen" : 1751252593759,
+    "active" : true
+  }
+}

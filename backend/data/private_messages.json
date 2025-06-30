@@ -1,0 +1,24 @@
+{
+  "8628bdec-17c2-4777-817e-b9c744a31ba1_7e5ced96-71c9-4135-8f72-732e232a6ce1" : [ {
+    "messageId" : "3b32ee35-a0c6-4c6c-8a49-dd8a03ff8954",
+    "senderId" : "7e5ced96-71c9-4135-8f72-732e232a6ce1",
+    "senderName" : "Teste1",
+    "receiverId" : "8628bdec-17c2-4777-817e-b9c744a31ba1",
+    "content" : "Ola",
+    "timestamp" : 1751252600388,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : false
+  } ],
+  "7e5ced96-71c9-4135-8f72-732e232a6ce1_8628bdec-17c2-4777-817e-b9c744a31ba1" : [ {
+    "messageId" : "3b32ee35-a0c6-4c6c-8a49-dd8a03ff8954",
+    "senderId" : "7e5ced96-71c9-4135-8f72-732e232a6ce1",
+    "senderName" : "Teste1",
+    "receiverId" : "8628bdec-17c2-4777-817e-b9c744a31ba1",
+    "content" : "Ola",
+    "timestamp" : 1751252600388,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : false
+  } ]
+}

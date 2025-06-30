@@ -1,6 +1,9 @@
 package br.com.whatsut.dao;
 
 import br.com.whatsut.model.Message;
+import br.com.whatsut.util.DataPersistenceUtil;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,14 +13,46 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * DAO para gerenciar mensagens em memória
+ * DAO para gerenciar mensagens com persistência em JSON
  */
 public class MessageDAO {
+    private static final String PRIVATE_MESSAGES_FILE = "private_messages";
+    private static final String GROUP_MESSAGES_FILE = "group_messages";
+    
     // Armazenar mensagens privadas: chave é userId_otherUserId
-    private static final Map<String, List<Message>> privateMessages = new ConcurrentHashMap<>();
+    private static Map<String, List<Message>> privateMessages;
     
     // Armazenar mensagens de grupo: chave é groupId
-    private static final Map<String, List<Message>> groupMessages = new ConcurrentHashMap<>();
+    private static Map<String, List<Message>> groupMessages;
+    
+    public MessageDAO() {
+        loadData();
+    }
+    
+    /**
+     * Carrega os dados dos arquivos JSON
+     */
+    private void loadData() {
+        // Carregar mensagens privadas
+        TypeReference<Map<String, List<Message>>> privateTypeRef = new TypeReference<Map<String, List<Message>>>() {};
+        privateMessages = DataPersistenceUtil.loadData(PRIVATE_MESSAGES_FILE, privateTypeRef, new ConcurrentHashMap<>());
+        
+        // Carregar mensagens de grupo
+        TypeReference<Map<String, List<Message>>> groupTypeRef = new TypeReference<Map<String, List<Message>>>() {};
+        groupMessages = DataPersistenceUtil.loadData(GROUP_MESSAGES_FILE, groupTypeRef, new ConcurrentHashMap<>());
+        
+        System.out.println("Dados de mensagens carregados: " + 
+                          privateMessages.size() + " conversas privadas, " + 
+                          groupMessages.size() + " conversas de grupo");
+    }
+    
+    /**
+     * Salva os dados em arquivos JSON
+     */
+    private void saveData() {
+        DataPersistenceUtil.saveData(PRIVATE_MESSAGES_FILE, privateMessages);
+        DataPersistenceUtil.saveData(GROUP_MESSAGES_FILE, groupMessages);
+    }
     
     /**
      * Adiciona uma mensagem privada
@@ -34,6 +69,9 @@ public class MessageDAO {
         privateMessages.computeIfAbsent(key1, k -> new ArrayList<>()).add(message);
         privateMessages.computeIfAbsent(key2, k -> new ArrayList<>()).add(message);
         
+        // Persistir dados
+        saveData();
+        
         return message;
     }
     
@@ -45,6 +83,10 @@ public class MessageDAO {
      */
     public Message addGroupMessage(String groupId, Message message) {
         groupMessages.computeIfAbsent(groupId, k -> new ArrayList<>()).add(message);
+        
+        // Persistir dados
+        saveData();
+        
         return message;
     }
     

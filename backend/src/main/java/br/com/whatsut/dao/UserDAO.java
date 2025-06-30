@@ -2,6 +2,9 @@ package br.com.whatsut.dao;
 
 import br.com.whatsut.model.User;
 import br.com.whatsut.security.PasswordEncryptor;
+import br.com.whatsut.util.DataPersistenceUtil;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,17 +13,50 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class UserDAO {
-    private static final Map<String, User> users = new ConcurrentHashMap<>();
-    private static final Map<String, String> emailToUserId = new ConcurrentHashMap<>();
+    private static final String USERS_FILE = "users";
+    private static final String EMAIL_MAP_FILE = "email_map";
+    
+    private static Map<String, User> users;
+    private static Map<String, String> emailToUserId;
     
     public UserDAO() {
-        // Criar um usuário de teste automaticamente
-        try {
-            createUser("teste", "teste@email.com", "Usuário Teste", "teste123");
-            System.out.println("Usuário de teste criado com sucesso: teste@email.com / teste123");
-        } catch (Exception e) {
+        // Carregar dados do arquivo ou criar novos mapas se não existirem
+        loadData();
+        
+        // Criar um usuário de teste automaticamente se não existir
+        if (getUserByEmail("teste@email.com") == null) {
+            try {
+                createUser("teste", "teste@email.com", "Usuário Teste", "teste123");
+                System.out.println("Usuário de teste criado com sucesso: teste@email.com / teste123");
+            } catch (Exception e) {
+                System.out.println("Erro ao criar usuário de teste: " + e.getMessage());
+            }
+        } else {
             System.out.println("Usuário de teste já existe.");
         }
+    }
+    
+    /**
+     * Carrega os dados dos arquivos JSON
+     */
+    private void loadData() {
+        // Carregar usuários
+        TypeReference<Map<String, User>> userTypeRef = new TypeReference<Map<String, User>>() {};
+        users = DataPersistenceUtil.loadData(USERS_FILE, userTypeRef, new ConcurrentHashMap<>());
+        
+        // Carregar mapa de email para userId
+        TypeReference<Map<String, String>> emailMapTypeRef = new TypeReference<Map<String, String>>() {};
+        emailToUserId = DataPersistenceUtil.loadData(EMAIL_MAP_FILE, emailMapTypeRef, new ConcurrentHashMap<>());
+        
+        System.out.println("Dados de usuários carregados: " + users.size() + " usuários");
+    }
+    
+    /**
+     * Salva os dados em arquivos JSON
+     */
+    private void saveData() {
+        DataPersistenceUtil.saveData(USERS_FILE, users);
+        DataPersistenceUtil.saveData(EMAIL_MAP_FILE, emailToUserId);
     }
     
     public User createUser(String username, String email, String displayName, String password) {
@@ -44,6 +80,9 @@ public class UserDAO {
         users.put(userId, user);
         emailToUserId.put(email, userId);
         
+        // Persistir dados
+        saveData();
+        
         return user;
     }
     
@@ -64,6 +103,8 @@ public class UserDAO {
         User user = users.get(userId);
         if (user != null) {
             user.setStatus(status);
+            // Persistir alteração
+            saveData();
             return true;
         }
         return false;

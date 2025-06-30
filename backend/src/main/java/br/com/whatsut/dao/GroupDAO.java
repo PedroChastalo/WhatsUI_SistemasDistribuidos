@@ -1,20 +1,44 @@
 package br.com.whatsut.dao;
 
 import br.com.whatsut.model.Group;
+import br.com.whatsut.util.DataPersistenceUtil;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.ArrayList;
-// import removido - não utilizado
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
- * DAO para gerenciar grupos em memória
+ * DAO para gerenciar grupos com persistência em JSON
  */
 public class GroupDAO {
+    private static final String GROUPS_FILE = "groups";
+    
     // Armazenar grupos: chave é groupId
-    private static final Map<String, Group> groups = new ConcurrentHashMap<>();
+    private static Map<String, Group> groups;
+    
+    public GroupDAO() {
+        loadData();
+    }
+    
+    /**
+     * Carrega os dados dos arquivos JSON
+     */
+    private void loadData() {
+        TypeReference<Map<String, Group>> typeRef = new TypeReference<Map<String, Group>>() {};
+        groups = DataPersistenceUtil.loadData(GROUPS_FILE, typeRef, new ConcurrentHashMap<>());
+        System.out.println("Dados de grupos carregados: " + groups.size() + " grupos");
+    }
+    
+    /**
+     * Salva os dados em arquivos JSON
+     */
+    private void saveData() {
+        DataPersistenceUtil.saveData(GROUPS_FILE, groups);
+    }
     
     /**
      * Cria um novo grupo
@@ -34,6 +58,10 @@ public class GroupDAO {
         }
         
         groups.put(group.getGroupId(), group);
+        
+        // Persistir dados
+        saveData();
+        
         return group;
     }
     
@@ -78,6 +106,10 @@ public class GroupDAO {
         }
         
         group.addMember(userId);
+        
+        // Persistir dados
+        saveData();
+        
         return true;
     }
     
@@ -99,6 +131,10 @@ public class GroupDAO {
         }
         
         group.removeMember(userId);
+        
+        // Persistir dados
+        saveData();
+        
         return true;
     }
     
@@ -115,6 +151,10 @@ public class GroupDAO {
         }
         
         group.setAdminId(newAdminId);
+        
+        // Persistir dados
+        saveData();
+        
         return true;
     }
     
@@ -131,6 +171,10 @@ public class GroupDAO {
         }
         
         groups.remove(groupId);
+        
+        // Persistir dados
+        saveData();
+        
         return true;
     }
     
@@ -147,6 +191,10 @@ public class GroupDAO {
         }
         
         group.setLastMessage(lastMessage);
+        
+        // Persistir dados
+        saveData();
+        
         return true;
     }
 }
