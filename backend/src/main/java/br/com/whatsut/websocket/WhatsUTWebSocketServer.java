@@ -572,12 +572,24 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
             response.put("error", "Usuário não autenticado");
             return;
         }
-        
-        // Implementação básica - na prática, você precisaria implementar este método no GroupService
-        response.put("success", false);
-        response.put("error", "Funcionalidade não implementada no servidor");
+
+        String groupId = (String) data.get("groupId");
+        String userIdToAdd = (String) data.get("userIdToAdd");
+        if (groupId == null || userIdToAdd == null) {
+            response.put("success", false);
+            response.put("error", "Parâmetros obrigatórios não fornecidos");
+            return;
+        }
+
+        try {
+            groupService.addUserToGroup(sessionId, groupId, userIdToAdd);
+            response.put("success", true);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
     }
-    
+
     private void handleRemoveUserFromGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -585,10 +597,22 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
             response.put("error", "Usuário não autenticado");
             return;
         }
-        
-        // Implementação básica - na prática, você precisaria implementar este método no GroupService
-        response.put("success", false);
-        response.put("error", "Funcionalidade não implementada no servidor");
+
+        String groupId = (String) data.get("groupId");
+        String userIdToRemove = (String) data.get("userIdToRemove");
+        if (groupId == null || userIdToRemove == null) {
+            response.put("success", false);
+            response.put("error", "Parâmetros obrigatórios não fornecidos");
+            return;
+        }
+
+        try {
+            groupService.removeUserFromGroup(sessionId, groupId, userIdToRemove);
+            response.put("success", true);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
     }
     
     private void handleSetGroupAdmin(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
@@ -598,10 +622,22 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
             response.put("error", "Usuário não autenticado");
             return;
         }
-        
-        // Implementação básica - na prática, você precisaria implementar este método no GroupService
-        response.put("success", false);
-        response.put("error", "Funcionalidade não implementada no servidor");
+
+        String groupId = (String) data.get("groupId");
+        String userIdToSetAdmin = (String) data.get("userIdToSetAdmin");
+        if (groupId == null || userIdToSetAdmin == null) {
+            response.put("success", false);
+            response.put("error", "Parâmetros obrigatórios não fornecidos");
+            return;
+        }
+
+        try {
+            groupService.setGroupAdmin(sessionId, groupId, userIdToSetAdmin);
+            response.put("success", true);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
     }
     
     private void handleLeaveGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
@@ -611,10 +647,21 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
             response.put("error", "Usuário não autenticado");
             return;
         }
-        
-        // Implementação básica - na prática, você precisaria implementar este método no GroupService
-        response.put("success", false);
-        response.put("error", "Funcionalidade não implementada no servidor");
+
+        String groupId = (String) data.get("groupId");
+        if (groupId == null) {
+            response.put("success", false);
+            response.put("error", "ID do grupo não fornecido");
+            return;
+        }
+
+        try {
+            groupService.leaveGroup(sessionId, groupId);
+            response.put("success", true);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
     }
     
     private void handleDeleteGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
@@ -624,10 +671,21 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
             response.put("error", "Usuário não autenticado");
             return;
         }
-        
-        // Implementação básica - na prática, você precisaria implementar este método no GroupService
-        response.put("success", false);
-        response.put("error", "Funcionalidade não implementada no servidor");
+
+        String groupId = (String) data.get("groupId");
+        if (groupId == null) {
+            response.put("success", false);
+            response.put("error", "ID do grupo não fornecido");
+            return;
+        }
+
+        try {
+            groupService.deleteGroup(sessionId, groupId);
+            response.put("success", true);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", e.getMessage());
+        }
     }
     
     private String getSessionIdFromQuery(String resourceDescriptor) {

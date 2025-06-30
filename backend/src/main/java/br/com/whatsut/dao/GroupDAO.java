@@ -36,7 +36,7 @@ public class GroupDAO {
     /**
      * Salva os dados em arquivos JSON
      */
-    private void saveData() {
+    public void saveData() {
         DataPersistenceUtil.saveData(GROUPS_FILE, groups);
     }
     

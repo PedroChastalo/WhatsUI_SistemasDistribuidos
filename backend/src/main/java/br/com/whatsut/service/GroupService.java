@@ -55,4 +55,47 @@ public interface GroupService extends Remote {
      * @throws RemoteException Erro RMI
      */
     List<Map<String, Object>> getGroupMembers(String sessionId, String groupId) throws RemoteException;
+
+    /**
+     * Adiciona um usuário a um grupo
+     * @param sessionId ID da sessão do usuário autenticado
+     * @param groupId ID do grupo
+     * @param userIdToAdd ID do usuário a ser adicionado
+     * @throws RemoteException Erro RMI
+     */
+    void addUserToGroup(String sessionId, String groupId, String userIdToAdd) throws RemoteException;
+
+    /**
+     * Remove um usuário de um grupo
+     * @param sessionId ID da sessão do usuário autenticado
+     * @param groupId ID do grupo
+     * @param userIdToRemove ID do usuário a ser removido
+     * @throws RemoteException Erro RMI
+     */
+    void removeUserFromGroup(String sessionId, String groupId, String userIdToRemove) throws RemoteException;
+
+    /**
+     * Define um usuário como admin de um grupo
+     * @param sessionId ID da sessão do usuário autenticado
+     * @param groupId ID do grupo
+     * @param userIdToSetAdmin ID do usuário a ser promovido a admin
+     * @throws RemoteException Erro RMI
+     */
+    void setGroupAdmin(String sessionId, String groupId, String userIdToSetAdmin) throws RemoteException;
+
+    /**
+     * Permite que um usuário saia de um grupo
+     * @param sessionId ID da sessão do usuário autenticado
+     * @param groupId ID do grupo
+     * @throws RemoteException Erro RMI
+     */
+    void leaveGroup(String sessionId, String groupId) throws RemoteException;
+
+    /**
+     * Exclui um grupo
+     * @param sessionId ID da sessão do usuário autenticado
+     * @param groupId ID do grupo a ser excluído
+     * @throws RemoteException Erro RMI
+     */
+    void deleteGroup(String sessionId, String groupId) throws RemoteException;
 }

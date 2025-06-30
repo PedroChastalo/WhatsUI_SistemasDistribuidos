@@ -192,7 +192,206 @@ public class GroupServiceImpl implements GroupService {
         
         return members;
     }
-    
+
+    @Override
+    public void addUserToGroup(String sessionId, String groupId, String userIdToAdd) throws RemoteException {
+        // Validar sessão
+        String requesterId = SessionManager.getUserIdFromSession(sessionId);
+        if (requesterId == null) {
+            throw new RemoteException("Sessão inválida");
+        }
+
+        // Verificar se o grupo existe
+        Group group = groupDAO.getGroupById(groupId);
+        if (group == null) {
+            throw new RemoteException("Grupo não encontrado");
+        }
+
+        // Verificar se o solicitante é membro do grupo
+        if (!group.getMembers().contains(requesterId)) {
+            throw new RemoteException("Você não é membro deste grupo");
+        }
+
+        // Verificar se o usuário a ser adicionado existe
+        User userToAdd = userDAO.getUserById(userIdToAdd);
+        if (userToAdd == null) {
+            throw new RemoteException("Usuário a ser adicionado não encontrado");
+        }
+
+        // Verificar se o usuário já está no grupo
+        if (group.getMembers().contains(userIdToAdd)) {
+            throw new RemoteException("Usuário já é membro do grupo");
+        }
+
+        // Adicionar usuário ao grupo
+        boolean added = groupDAO.addMemberToGroup(groupId, userIdToAdd);
+        if (!added) {
+            throw new RemoteException("Falha ao adicionar usuário ao grupo");
+        }
+
+        // Mensagem de sistema (opcional)
+        Message systemMessage = new Message(
+            "system",
+            "Sistema",
+            groupId,
+            userToAdd.getDisplayName() + " foi adicionado ao grupo",
+            true
+        );
+        messageDAO.addGroupMessage(groupId, systemMessage);
+        groupDAO.updateLastMessage(groupId, systemMessage.getContent());
+    }
+
+    @Override
+    public void removeUserFromGroup(String sessionId, String groupId, String userIdToRemove) throws RemoteException {
+        String requesterId = SessionManager.getUserIdFromSession(sessionId);
+        if (requesterId == null) {
+            throw new RemoteException("Sessão inválida");
+        }
+
+        Group group = groupDAO.getGroupById(groupId);
+        if (group == null) {
+            throw new RemoteException("Grupo não encontrado");
+        }
+
+        // Só membros podem remover alguém (ou só admin, se quiser)
+        if (!group.getMembers().contains(requesterId)) {
+            throw new RemoteException("Você não é membro deste grupo");
+        }
+
+        // Não pode remover alguém que não está no grupo
+        if (!group.getMembers().contains(userIdToRemove)) {
+            throw new RemoteException("Usuário não está no grupo");
+        }
+
+        // Não pode remover o último membro ou o próprio admin (se quiser proteger)
+        if (group.getMembers().size() <= 1) {
+            throw new RemoteException("O grupo não pode ficar sem membros");
+        }
+
+        boolean removed = groupDAO.removeMemberFromGroup(groupId, userIdToRemove);
+        if (!removed) {
+            throw new RemoteException("Falha ao remover usuário do grupo");
+        }
+
+        // Mensagem de sistema (opcional)
+        User userRemoved = userDAO.getUserById(userIdToRemove);
+        if (userRemoved != null) {
+            Message systemMessage = new Message(
+                "system",
+                "Sistema",
+                groupId,
+                userRemoved.getDisplayName() + " foi removido do grupo",
+                true
+            );
+            messageDAO.addGroupMessage(groupId, systemMessage);
+            groupDAO.updateLastMessage(groupId, systemMessage.getContent());
+        }
+    }
+
+    @Override
+    public void setGroupAdmin(String sessionId, String groupId, String userIdToSetAdmin) throws RemoteException {
+        String requesterId = SessionManager.getUserIdFromSession(sessionId);
+        if (requesterId == null) {
+            throw new RemoteException("Sessão inválida");
+        }
+
+        Group group = groupDAO.getGroupById(groupId);
+        if (group == null) {
+            throw new RemoteException("Grupo não encontrado");
+        }
+
+        // Só o admin atual pode promover outro admin
+        if (!group.getAdminId().equals(requesterId)) {
+            throw new RemoteException("Apenas o admin atual pode definir outro admin");
+        }
+
+        // O novo admin precisa ser membro do grupo
+        if (!group.getMembers().contains(userIdToSetAdmin)) {
+            throw new RemoteException("Usuário não é membro do grupo");
+        }
+
+        group.setAdminId(userIdToSetAdmin);
+        groupDAO.saveData(); // Salva a alteração
+
+        // Mensagem de sistema (opcional)
+        User user = userDAO.getUserById(userIdToSetAdmin);
+        if (user != null) {
+            Message systemMessage = new Message(
+                "system",
+                "Sistema",
+                groupId,
+                user.getDisplayName() + " agora é o admin do grupo",
+                true
+            );
+            messageDAO.addGroupMessage(groupId, systemMessage);
+            groupDAO.updateLastMessage(groupId, systemMessage.getContent());
+        }
+    }
+
+    @Override
+    public void leaveGroup(String sessionId, String groupId) throws RemoteException {
+        String userId = SessionManager.getUserIdFromSession(sessionId);
+        if (userId == null) {
+            throw new RemoteException("Sessão inválida");
+        }
+
+        Group group = groupDAO.getGroupById(groupId);
+        if (group == null) {
+            throw new RemoteException("Grupo não encontrado");
+        }
+
+        if (!group.getMembers().contains(userId)) {
+            throw new RemoteException("Você não é membro deste grupo");
+        }
+
+        // Se o usuário for admin, pode exigir transferência de admin antes de sair
+        if (group.getAdminId().equals(userId)) {
+            throw new RemoteException("O admin deve transferir a administração antes de sair do grupo");
+        }
+
+        boolean removed = groupDAO.removeMemberFromGroup(groupId, userId);
+        if (!removed) {
+            throw new RemoteException("Falha ao sair do grupo");
+        }
+
+        // Mensagem de sistema (opcional)
+        User user = userDAO.getUserById(userId);
+        if (user != null) {
+            Message systemMessage = new Message(
+                "system",
+                "Sistema",
+                groupId,
+                user.getDisplayName() + " saiu do grupo",
+                true
+            );
+            messageDAO.addGroupMessage(groupId, systemMessage);
+            groupDAO.updateLastMessage(groupId, systemMessage.getContent());
+        }
+    }
+
+    @Override
+    public void deleteGroup(String sessionId, String groupId) throws RemoteException {
+        String userId = SessionManager.getUserIdFromSession(sessionId);
+        if (userId == null) {
+            throw new RemoteException("Sessão inválida");
+        }
+
+        Group group = groupDAO.getGroupById(groupId);
+        if (group == null) {
+            throw new RemoteException("Grupo não encontrado");
+        }
+
+        // Apenas o admin pode excluir o grupo
+        if (!group.getAdminId().equals(userId)) {
+            throw new RemoteException("Apenas o admin pode excluir o grupo");
+        }
+
+        boolean deleted = groupDAO.deleteGroup(groupId, userId);
+        if (!deleted) {
+            throw new RemoteException("Falha ao excluir o grupo");
+        }
+    }
+
     /**
      * Converte um objeto Group para um Map
      * @param group Grupo a ser convertido
