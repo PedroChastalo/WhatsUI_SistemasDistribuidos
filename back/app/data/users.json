@@ -1,0 +1,52 @@
+[
+  {
+    "userId": "7eb309fd-0758-4fe9-8ece-7f780d0c86d5",
+    "username": "Teste1",
+    "displayName": "Teste1",
+    "email": "Teste1@email.com",
+    "passwordHash": "6b7a8a40eb42d9b6593930c0a4ca9946792e235709bc074ca056d9aefaa37b61",
+    "status": "offline",
+    "lastSeen": null,
+    "profilePicture": null
+  },
+  {
+    "userId": "51eaaed2-66b6-47d2-85ea-8c3b097867a2",
+    "username": "Vitor",
+    "displayName": "Vitor",
+    "email": "vitor@email.com",
+    "passwordHash": "7b827bc16e9e53a5f16aa71cbef3f22e7c293ba056ec033b2f171007266146d7",
+    "status": "offline",
+    "lastSeen": null,
+    "profilePicture": null
+  },
+  {
+    "userId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "username": "Maria",
+    "displayName": "Maria Silva",
+    "email": "maria@email.com",
+    "passwordHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "status": "online",
+    "lastSeen": "2024-06-10T10:00:00Z",
+    "profilePicture": null
+  },
+  {
+    "userId": "b2c3d4e5-6789-01bc-defa-2345678901bc",
+    "username": "Carlos",
+    "displayName": "Carlos Souza",
+    "email": "carlos@email.com",
+    "passwordHash": "b6d81b360a5672d80c27430f39153e2cfa4106c7c3b6b8b5b8b8b8b8b8b8b8b8",
+    "status": "offline",
+    "lastSeen": "2024-06-09T18:30:00Z",
+    "profilePicture": null
+  },
+  {
+    "userId": "c3d4e5f6-7890-12cd-efab-3456789012cd",
+    "username": "Ana",
+    "displayName": "Ana Paula",
+    "email": "ana@email.com",
+    "passwordHash": "9c56cc51b374c3b5b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8b8",
+    "status": "away",
+    "lastSeen": "2024-06-10T08:45:00Z",
+    "profilePicture": null
+  }
+]

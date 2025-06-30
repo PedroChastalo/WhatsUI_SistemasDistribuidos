@@ -1,0 +1,29 @@
+[
+  {
+    "messageId": "gmsg-4",
+    "senderId": "51eaaed2-66b6-47d2-85ea-8c3b097867a2",
+    "groupId": "group-2",
+    "content": "Bom dia, grupo B!",
+    "timestamp": 1719654200000,
+    "type": "group",
+    "status": "sent"
+  },
+  {
+    "messageId": "gmsg-5",
+    "senderId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "groupId": "group-2",
+    "content": "Bom dia! Alguma novidade?",
+    "timestamp": 1719654260000,
+    "type": "group",
+    "status": "sent"
+  },
+  {
+    "messageId": "d0fc7651-64a0-4a26-af63-1ca239bcf1bd",
+    "senderId": "7eb309fd-0758-4fe9-8ece-7f780d0c86d5",
+    "groupId": "group-2",
+    "content": "29",
+    "timestamp": 1751240386861,
+    "type": "group",
+    "status": "sent"
+  }
+]

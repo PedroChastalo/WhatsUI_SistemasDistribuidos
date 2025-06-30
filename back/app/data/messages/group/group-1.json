@@ -1,0 +1,38 @@
+[
+  {
+    "messageId": "gmsg-1",
+    "senderId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "groupId": "group-1",
+    "content": "Bem-vindos ao grupo A!",
+    "timestamp": 1719654000000,
+    "type": "group",
+    "status": "sent"
+  },
+  {
+    "messageId": "gmsg-2",
+    "senderId": "b2c3d4e5-6789-01bc-defa-2345678901bc",
+    "groupId": "group-1",
+    "content": "Olá pessoal, tudo bem?",
+    "timestamp": 1719654060000,
+    "type": "group",
+    "status": "sent"
+  },
+  {
+    "messageId": "gmsg-3",
+    "senderId": "c3d4e5f6-7890-12cd-efab-3456789012cd",
+    "groupId": "group-1",
+    "content": "Tudo ótimo! Vamos marcar uma reunião?",
+    "timestamp": 1719654120000,
+    "type": "group",
+    "status": "sent"
+  },
+  {
+    "messageId": "9f34cfdf-67cd-47d2-887f-add59789c97f",
+    "senderId": "7eb309fd-0758-4fe9-8ece-7f780d0c86d5",
+    "groupId": "group-1",
+    "content": "Vitor",
+    "timestamp": 1751240184481,
+    "type": "group",
+    "status": "sent"
+  }
+]

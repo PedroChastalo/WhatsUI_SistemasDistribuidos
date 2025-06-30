@@ -1,0 +1,29 @@
+[
+  {
+    "messageId": "msg-3",
+    "senderId": "51eaaed2-66b6-47d2-85ea-8c3b097867a2",
+    "receiverId": "7eb309fd-0758-4fe9-8ece-7f780d0c86d5",
+    "content": "Bom dia Teste1!",
+    "timestamp": 1720000020000,
+    "type": "user",
+    "status": "sent"
+  },
+  {
+    "messageId": "msg-4",
+    "senderId": "7eb309fd-0758-4fe9-8ece-7f780d0c86d5",
+    "receiverId": "51eaaed2-66b6-47d2-85ea-8c3b097867a2",
+    "content": "Bom dia Vitor!",
+    "timestamp": 1720000025000,
+    "type": "user",
+    "status": "sent"
+  },
+  {
+    "messageId": "msg-8",
+    "senderId": "51eaaed2-66b6-47d2-85ea-8c3b097867a2",
+    "receiverId": "7eb309fd-0758-4fe9-8ece-7f780d0c86d5",
+    "content": "Vamos conversar mais tarde?",
+    "timestamp": 1720000030000,
+    "type": "user",
+    "status": "sent"
+  }
+]

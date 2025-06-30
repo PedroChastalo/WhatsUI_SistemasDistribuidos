@@ -1,0 +1,44 @@
+[
+    {
+        "userId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+        "groupId": "group-1",
+        "role": "admin",
+        "joinedAt": 1719653900000
+    },
+    {
+        "userId": "b2c3d4e5-6789-01bc-defa-2345678901bc",
+        "groupId": "group-1",
+        "role": "member",
+        "joinedAt": 1719653905000
+    },
+    {
+        "userId": "c3d4e5f6-7890-12cd-efab-3456789012cd",
+        "groupId": "group-1",
+        "role": "member",
+        "joinedAt": 1719653910000
+    },
+    {
+        "userId": "b2c3d4e5-6789-01bc-defa-2345678901bc",
+        "groupId": "group-2",
+        "role": "admin",
+        "joinedAt": 1719653950000
+    },
+    {
+        "userId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+        "groupId": "group-2",
+        "role": "member",
+        "joinedAt": 1719653955000
+    },
+    {
+        "userId": "c3d4e5f6-7890-12cd-efab-3456789012cd",
+        "groupId": "group-3",
+        "role": "admin",
+        "joinedAt": 1719653980000
+    },
+    {
+        "userId": "51eaaed2-66b6-47d2-85ea-8c3b097867a2",
+        "groupId": "group-4",
+        "role": "admin",
+        "joinedAt": 1719653990000
+    }
+]

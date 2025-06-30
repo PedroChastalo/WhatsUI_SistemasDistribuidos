@@ -1,0 +1,38 @@
+[
+  {
+    "messageId": "msg-1",
+    "senderId": "7eb309fd-0758-4fe9-8ece-7f780d0c86d5",
+    "receiverId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "content": "Oi Maria!",
+    "timestamp": 1720000000000,
+    "type": "user",
+    "status": "sent"
+  },
+  {
+    "messageId": "msg-2",
+    "senderId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "receiverId": "7eb309fd-0758-4fe9-8ece-7f780d0c86d5",
+    "content": "Oi Teste1! Tudo bem?",
+    "timestamp": 1720000005000,
+    "type": "user",
+    "status": "sent"
+  },
+  {
+    "messageId": "msg-7",
+    "senderId": "7eb309fd-0758-4fe9-8ece-7f780d0c86d5",
+    "receiverId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "content": "Como você está?",
+    "timestamp": 1720000010000,
+    "type": "user",
+    "status": "sent"
+  },
+  {
+    "messageId": "msg-10",
+    "senderId": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "receiverId": "7eb309fd-0758-4fe9-8ece-7f780d0c86d5",
+    "content": "Estou ótima, obrigada!",
+    "timestamp": 1720000015000,
+    "type": "user",
+    "status": "sent"
+  }
+]

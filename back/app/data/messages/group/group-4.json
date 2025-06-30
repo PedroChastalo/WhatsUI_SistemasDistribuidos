@@ -1,0 +1,11 @@
+[
+  {
+    "messageId": "gmsg-7",
+    "senderId": "b2c3d4e5-6789-01bc-defa-2345678901bc",
+    "groupId": "group-4",
+    "content": "Sejam bem-vindos ao grupo D!",
+    "timestamp": 1719654600000,
+    "type": "group",
+    "status": "sent"
+  }
+]

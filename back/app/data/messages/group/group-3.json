@@ -1,0 +1,11 @@
+[
+  {
+    "messageId": "gmsg-6",
+    "senderId": "c3d4e5f6-7890-12cd-efab-3456789012cd",
+    "groupId": "group-3",
+    "content": "Oi pessoal do grupo C!",
+    "timestamp": 1719654400000,
+    "type": "group",
+    "status": "sent"
+  }
+]
