@@ -17,7 +17,7 @@ class WebSocketClient {
     this.pendingRequests = new Map();
     this.eventListeners = new Map();
     this.mockMode = false; // Desativando o modo mock para usar o backend real
-    this.url = 'ws://localhost:8080/whatsut';
+    this.url = 'ws://localhost:8765';
   }
 
   // Conectar ao servidor WebSocket
