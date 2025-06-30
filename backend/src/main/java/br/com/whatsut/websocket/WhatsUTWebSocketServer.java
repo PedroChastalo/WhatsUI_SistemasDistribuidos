@@ -19,11 +19,13 @@ import br.com.whatsut.service.AuthenticationService;
 import br.com.whatsut.service.UserService;
 import br.com.whatsut.service.MessageService;
 import br.com.whatsut.service.GroupService;
+import br.com.whatsut.dao.PendingJoinRequestDAO;
 import br.com.whatsut.model.User;
 
 public class WhatsUTWebSocketServer extends WebSocketServer {
     private final Map<WebSocket, String> sessions = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final PendingJoinRequestDAO pendingJoinRequestDAO = new PendingJoinRequestDAO();
     
     // Serviços RMI
     private AuthenticationService authService;
@@ -63,10 +65,21 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
             try {
                 if (authService.validateSession(sessionId)) {
                     sessions.put(conn, sessionId);
-                    System.out.println("Sessão validada: " + sessionId);
-                } else {
-                    System.out.println("Sessão inválida: " + sessionId);
+                    // Enviar notificações pendentes se for admin
+                    User user = userService.getUserById(sessionId, null); // ajuste se necessário
+                    if (user != null) {
+                        List<PendingJoinRequestDAO.JoinRequest> pendings = pendingJoinRequestDAO.getAndRemoveRequests(user.getUserId());
+                        for (PendingJoinRequestDAO.JoinRequest req : pendings) {
+                            Map<String, Object> notify = new HashMap<>();
+                            notify.put("type", "joinGroupRequest");
+                            notify.put("groupId", req.groupId);
+                            notify.put("userId", req.userId);
+                            notify.put("userName", req.userName);
+                            conn.send(objectMapper.writeValueAsString(notify));
+                        }
+                    }
                 }
+                // ...existing code...
             } catch (Exception e) {
                 System.err.println("Erro ao validar sessão: " + e.getMessage());
             }
@@ -174,7 +187,10 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
                 case "deleteGroup":
                     handleDeleteGroup(conn, data, response);
                     break;
-                    
+                
+                case "requestJoinGroup":
+                    handleRequestJoinGroup(conn, data, response);
+                    break;
                 default:
                     response.put("success", false);
                     response.put("error", "Tipo de requisição desconhecido: " + type);
@@ -686,6 +702,62 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
             response.put("success", false);
             response.put("error", e.getMessage());
         }
+    }
+
+    private void handleRequestJoinGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
+        String sessionId = sessions.get(conn);
+        if (sessionId == null) {
+            response.put("success", false);
+            response.put("error", "Usuário não autenticado");
+            return;
+        }
+        String groupId = (String) data.get("groupId");
+        if (groupId == null) {
+            response.put("success", false);
+            response.put("error", "ID do grupo não fornecido");
+            return;
+        }
+
+        // Obtenha o usuário e o grupo
+        User user = userService.getUserById(sessionId, null); // ou ajuste para buscar pelo sessionId
+        Map<String, Object> group = groupService.getGroups(sessionId).stream()
+            .filter(g -> groupId.equals(g.get("groupId")))
+            .findFirst().orElse(null);
+        if (user == null || group == null) {
+            response.put("success", false);
+            response.put("error", "Usuário ou grupo não encontrado");
+            return;
+        }
+        String adminId = (String) group.get("adminId");
+
+        // Verifique se o admin está online
+        WebSocket adminConn = null;
+        for (Map.Entry<WebSocket, String> entry : sessions.entrySet()) {
+            if (entry.getValue() != null && entry.getValue().equals(adminId)) {
+                adminConn = entry.getKey();
+                break;
+            }
+        }
+
+        PendingJoinRequestDAO.JoinRequest req = new PendingJoinRequestDAO.JoinRequest(
+            groupId, user.getUserId(), user.getDisplayName()
+        );
+
+        if (adminConn != null) {
+            // Admin online: envie notificação
+            Map<String, Object> notify = new HashMap<>();
+            notify.put("type", "joinGroupRequest");
+            notify.put("groupId", groupId);
+            notify.put("userId", user.getUserId());
+            notify.put("userName", user.getDisplayName());
+            adminConn.send(objectMapper.writeValueAsString(notify));
+        } else {
+            // Admin offline: salve o pedido
+            pendingJoinRequestDAO.addRequest(adminId, req);
+        }
+
+        response.put("success", true);
+        response.put("message", "Pedido enviado ao admin do grupo.");
     }
     
     private String getSessionIdFromQuery(String resourceDescriptor) {
