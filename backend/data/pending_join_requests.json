@@ -1,33 +1,4 @@
 {
-  "f05d57ec-5161-4621-8abf-94a0e1574649" : [ {
-    "groupId" : "09f1bab4-0040-4ddf-8832-29c689ff5566",
-    "userId" : "cdeafc40-a463-4f72-9d33-e7e50e2dff5a",
-    "userName" : "Teste1"
-  }, {
-    "groupId" : "9f96df77-6d12-481a-814d-bd5f6767ea09",
-    "userId" : "cdeafc40-a463-4f72-9d33-e7e50e2dff5a",
-    "userName" : "Teste1"
-  }, {
-    "groupId" : "4f96f58b-f369-4b10-9bbb-c634340773f5",
-    "userId" : "cdeafc40-a463-4f72-9d33-e7e50e2dff5a",
-    "userName" : "Teste1"
-  } ],
-  "791b23fa-47e3-4462-9544-07c4b6ae0aa2" : [ {
-    "groupId" : "fa724bf3-feff-484d-bceb-ae600496005d",
-    "userId" : "cdeafc40-a463-4f72-9d33-e7e50e2dff5a",
-    "userName" : "Teste1"
-  }, {
-    "groupId" : "fa724bf3-feff-484d-bceb-ae600496005d",
-    "userId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
-    "userName" : "Pedro"
-  } ],
-  "cdeafc40-a463-4f72-9d33-e7e50e2dff5a" : [ {
-    "groupId" : "96f93304-49ae-4cd4-8a6c-01c98bfba894",
-    "userId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
-    "userName" : "Pedro"
-  }, {
-    "groupId" : "2349970d-69b7-4d68-8276-ab9854023103",
-    "userId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
-    "userName" : "Pedro"
-  } ]
+  "ee7840b2-5d3e-4ddb-a4c2-b55a3fd83b52" : [ ],
+  "568d24e6-997b-46d9-a8de-f0ab2c57f674" : [ ]
 }

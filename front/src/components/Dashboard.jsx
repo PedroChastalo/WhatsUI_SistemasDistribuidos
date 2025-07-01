@@ -175,50 +175,37 @@ export default function Dashboard({ onSelectChat, onLogout }) {
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
-              <h2 className="text-lg font-semibold text-gray-800 mr-2">WhatsUT</h2>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setShowRequestsModal(true)} 
-                title="Solicitações de grupo"
-                className="relative h-8 w-8 p-0"
-              >
-                <Bell size={16} />
-                {hasRequests && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-white text-[10px]">
-                    {pendingGroupRequests.length}
-                  </span>
-                )}
-              </Button>
-            </div>
-            <div className="flex space-x-2">
-              <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
-                <LogOut size={18} />
-              </Button>
-            </div>
+               <h2 className="text-lg font-semibold text-gray-800">
+                 WhatsUT
+               </h2>
+             </div>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Avatar className="h-10 w-10">
                 <AvatarFallback className="bg-blue-600 text-white">
-                  {currentUser?.displayName?.charAt(0).toUpperCase() || '?'}
+                  {currentUser?.displayName?.charAt(0).toUpperCase() || "?"}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="font-medium text-gray-900">{currentUser?.displayName || 'Usuário'}</h3>
+                <h3 className="font-medium text-gray-900">
+                  {currentUser?.displayName || "Usuário"}
+                </h3>
                 <p className="text-sm text-green-600">Online</p>
               </div>
             </div>
             {/* Área para botões adicionais se necessário */}
-            <div className="flex items-center space-x-2">
-            </div>
+            <div className="flex items-center space-x-2"></div>
           </div>
         </div>
 
         {/* Busca */}
         <div className="p-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              size={16}
+            />
             <Input
               placeholder="Buscar usuários e grupos"
               value={searchQuery}
@@ -231,20 +218,32 @@ export default function Dashboard({ onSelectChat, onLogout }) {
         {/* Abas */}
         <div className="flex border border-gray-200 rounded-md overflow-hidden">
           <button
-            className={`flex-1 py-2 text-sm font-medium ${selectedTab === 'recent' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-            onClick={() => setSelectedTab('recent')}
+            className={`flex-1 py-2 text-sm font-medium ${
+              selectedTab === "recent"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+            onClick={() => setSelectedTab("recent")}
           >
             Recentes
           </button>
           <button
-            className={`flex-1 py-2 text-sm font-medium ${selectedTab === 'groups' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-            onClick={() => setSelectedTab('groups')}
+            className={`flex-1 py-2 text-sm font-medium ${
+              selectedTab === "groups"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+            onClick={() => setSelectedTab("groups")}
           >
             Meus Grupos
           </button>
           <button
-            className={`flex-1 py-2 text-sm font-medium ${selectedTab === 'available' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-            onClick={() => setSelectedTab('available')}
+            className={`flex-1 py-2 text-sm font-medium ${
+              selectedTab === "available"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-700 hover:bg-gray-50"
+            }`}
+            onClick={() => setSelectedTab("available")}
           >
             Disponíveis
           </button>
@@ -261,7 +260,7 @@ export default function Dashboard({ onSelectChat, onLogout }) {
               </div>
             </div>
           )}
-          
+
           {/* Exibir mensagem de erro */}
           {error && (
             <div className="bg-red-50 p-4 rounded-lg mb-4 flex items-center gap-2">
@@ -269,13 +268,17 @@ export default function Dashboard({ onSelectChat, onLogout }) {
               <p className="text-red-600">{error}</p>
             </div>
           )}
-          
+
           {/* Conversas recentes */}
-          {!isLoading && selectedTab === 'recent' && (
+          {!isLoading && selectedTab === "recent" && (
             <div className="space-y-2">
-              <h4 className="text-sm font-medium text-gray-700 mb-3">Usuários ({filteredChats.length})</h4>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">
+                Usuários ({filteredChats.length})
+              </h4>
               {filteredChats.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Nenhuma conversa recente</p>
+                <p className="text-gray-500 text-center py-4">
+                  Nenhuma conversa recente
+                </p>
               ) : (
                 filteredChats.map((chat) => (
                   <div
@@ -284,18 +287,37 @@ export default function Dashboard({ onSelectChat, onLogout }) {
                     className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <Avatar className="h-10 w-10">
-                      <AvatarFallback className={chat.type === 'group' ? 'bg-blue-100 text-blue-600' : 'bg-gray-200'}>
-                        {chat.type === 'group' ? <Users size={20} /> : (chat.displayName || chat.username || '?').charAt(0)}
+                      <AvatarFallback
+                        className={
+                          chat.type === "group"
+                            ? "bg-blue-100 text-blue-600"
+                            : "bg-gray-200"
+                        }
+                      >
+                        {chat.type === "group" ? (
+                          <Users size={20} />
+                        ) : (
+                          (chat.displayName || chat.username || "?").charAt(0)
+                        )}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-gray-900 truncate">{chat.displayName || chat.username || 'Usuário'}</h4>
+                        <h4 className="font-medium text-gray-900 truncate">
+                          {chat.displayName || chat.username || "Usuário"}
+                        </h4>
                         <span className="text-xs text-gray-500">
-                          {chat.timestamp ? new Date(chat.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}
+                          {chat.timestamp
+                            ? new Date(chat.timestamp).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : ""}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 truncate">{chat.lastMessage}</p>
+                      <p className="text-sm text-gray-600 truncate">
+                        {chat.lastMessage}
+                      </p>
                     </div>
                     {/* Removido o badge de mensagens não lidas conforme solicitado */}
                   </div>
@@ -304,22 +326,30 @@ export default function Dashboard({ onSelectChat, onLogout }) {
             </div>
           )}
 
-          {!isLoading && selectedTab === 'groups' && (
+          {!isLoading && selectedTab === "groups" && (
             <div className="space-y-2">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-gray-700">Meus Grupos ({filteredGroups.length})</h4>
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => setShowCreateGroupModal(true)}>
+                <h4 className="text-sm font-medium text-gray-700">
+                  Meus Grupos ({filteredGroups.length})
+                </h4>
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => setShowCreateGroupModal(true)}
+                >
                   <Plus size={16} className="mr-1" />
                   Novo
                 </Button>
               </div>
               {filteredGroups.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Você não participa de nenhum grupo</p>
+                <p className="text-gray-500 text-center py-4">
+                  Você não participa de nenhum grupo
+                </p>
               ) : (
                 filteredGroups.map((group) => (
                   <div
                     key={group.groupId}
-                    onClick={() => onSelectChat({ ...group, type: 'group' })}
+                    onClick={() => onSelectChat({ ...group, type: "group" })}
                     className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
                   >
                     <Avatar className="h-10 w-10">
@@ -329,29 +359,37 @@ export default function Dashboard({ onSelectChat, onLogout }) {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-gray-900 truncate">{group.name}</h4>
+                        <h4 className="font-medium text-gray-900 truncate">
+                          {group.name}
+                        </h4>
                         {group.unreadCount > 0 && (
                           <Badge className="bg-blue-600 text-white min-w-[20px] h-5 text-xs">
                             {group.unreadCount}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 truncate">{group.lastMessage || 'Sem mensagens'}</p>
+                      <p className="text-sm text-gray-600 truncate">
+                        {group.lastMessage || "Sem mensagens"}
+                      </p>
                     </div>
                   </div>
                 ))
               )}
             </div>
           )}
-          
-          {!isLoading && selectedTab === 'available' && (
+
+          {!isLoading && selectedTab === "available" && (
             <div className="space-y-2">
               <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium text-gray-700">Grupos Disponíveis ({filteredAvailableGroups.length})</h4>
+                <h4 className="text-sm font-medium text-gray-700">
+                  Grupos Disponíveis ({filteredAvailableGroups.length})
+                </h4>
               </div>
-              
+
               {filteredAvailableGroups.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">Nenhum grupo disponível para entrar</p>
+                <p className="text-gray-500 text-center py-4">
+                  Nenhum grupo disponível para entrar
+                </p>
               ) : (
                 <div className="space-y-2">
                   {filteredAvailableGroups.map((group) => (
@@ -366,9 +404,11 @@ export default function Dashboard({ onSelectChat, onLogout }) {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-gray-900 truncate">{group.name}</h4>
+                          <h4 className="font-medium text-gray-900 truncate">
+                            {group.name}
+                          </h4>
                           <Button
-                            variant="outline" 
+                            variant="outline"
                             className="h-8 w-8 p-0 rounded-full flex items-center justify-center"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -394,80 +434,25 @@ export default function Dashboard({ onSelectChat, onLogout }) {
 
       {/* Área principal */}
       <div className="flex-1 flex items-center justify-center bg-gray-50 relative">
-        {/* Ícone de notificações na barra lateral direita */}
-        <div className="absolute right-4 bottom-4 flex flex-col gap-2">
-          {hasRequests && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="secondary" 
-                  size="icon" 
-                  className="h-10 w-10 rounded-full shadow-md relative bg-white hover:bg-gray-100"
-                >
-                  <Bell size={20} />
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs">
-                    {pendingGroupRequests.length}
-                  </span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-0" align="end">
-                <div className="p-3 border-b">
-                  <h3 className="font-medium">Solicitações de Grupo</h3>
-                </div>
-                <div className="max-h-[300px] overflow-y-auto">
-                  {pendingGroupRequests.map((request) => (
-                    <div 
-                      key={`${request.userId}-${request.groupId}`} 
-                      className="p-3 border-b hover:bg-gray-50 flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-gray-100 text-gray-600">
-                            {request.userName?.charAt(0).toUpperCase() || 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">{request.userName}</p>
-                          <p className="text-xs text-gray-500">Quer entrar no grupo</p>
-                        </div>
-                      </div>
-                      <div className="flex space-x-1">
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-7 w-7 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => handleRespondToRequest(request.userId, request.groupId, true)}
-                        >
-                          <Check size={14} />
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleRespondToRequest(request.userId, request.groupId, false)}
-                        >
-                          <X size={14} />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="p-2 border-t">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full" 
-                    onClick={() => setShowRequestsModal(true)}
-                  >
-                    Ver todas as solicitações
-                  </Button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-          <Button 
-            variant="secondary" 
-            size="icon" 
+        {/* Ações globais (notificações e logout) */}
+        <div className="absolute top-4 right-4 flex gap-2 z-50">
+          <Button
+            variant="secondary"
+            size="icon"
+            className="h-10 w-10 rounded-full shadow-md relative bg-white hover:bg-gray-100"
+            title="Solicitações de grupo"
+            onClick={() => setShowRequestsModal(true)}
+          >
+            <Bell size={20} />
+            {hasRequests && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs">
+                {pendingGroupRequests.length}
+              </span>
+            )}
+          </Button>
+          <Button
+            variant="secondary"
+            size="icon"
             className="h-10 w-10 rounded-full shadow-md bg-white hover:bg-gray-100"
             onClick={handleLogout}
             title="Sair"
@@ -475,25 +460,30 @@ export default function Dashboard({ onSelectChat, onLogout }) {
             <LogOut size={20} />
           </Button>
         </div>
-        
+
         <div className="text-center">
           <MessageCircle size={64} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="text-xl font-medium text-gray-900 mb-2">Bem-vindo ao WhatsUT</h3>
-          <p className="text-gray-600">Selecione uma conversa para começar a conversar</p>
+          <h3 className="text-xl font-medium text-gray-900 mb-2">
+            Bem-vindo ao WhatsUT
+          </h3>
+          <p className="text-gray-600">
+            Selecione uma conversa para começar a conversar
+          </p>
           {currentUser && (
             <div className="mt-4 text-sm text-gray-500">
-              Conectado como <span className="font-medium">{currentUser.displayName}</span>
+              Conectado como{" "}
+              <span className="font-medium">{currentUser.displayName}</span>
             </div>
           )}
         </div>
       </div>
 
-      <CreateGroupModal 
+      <CreateGroupModal
         isOpen={showCreateGroupModal}
         onClose={() => setShowCreateGroupModal(false)}
         onCreateGroup={handleCreateGroup}
       />
-      
+
       <GroupRequestsModal
         isOpen={showRequestsModal}
         onClose={() => setShowRequestsModal(false)}
@@ -501,6 +491,6 @@ export default function Dashboard({ onSelectChat, onLogout }) {
         onRespond={handleRespondToRequest}
       />
     </div>
-  )
+  );
 }
 

@@ -1,56 +1,38 @@
 {
-  "96f93304-49ae-4cd4-8a6c-01c98bfba894" : {
-    "groupId" : "96f93304-49ae-4cd4-8a6c-01c98bfba894",
-    "name" : "Teste",
-    "adminId" : "cdeafc40-a463-4f72-9d33-e7e50e2dff5a",
-    "members" : [ "cdeafc40-a463-4f72-9d33-e7e50e2dff5a" ],
-    "createdAt" : 1751304443988,
-    "lastMessage" : "Teste1 saiu do grupo",
-    "lastMessageTime" : 1751328403552
+  "4df745c1-5a41-42e0-ab23-8a8368b2f359" : {
+    "groupId" : "4df745c1-5a41-42e0-ab23-8a8368b2f359",
+    "name" : "pamela",
+    "adminId" : "568d24e6-997b-46d9-a8de-f0ab2c57f674",
+    "members" : [ "568d24e6-997b-46d9-a8de-f0ab2c57f674", "ee7840b2-5d3e-4ddb-a4c2-b55a3fd83b52", "88379487-72c3-4ba8-8909-2258c01e561a" ],
+    "createdAt" : 1751340153425,
+    "lastMessage" : "Vitor foi adicionado ao grupo",
+    "lastMessageTime" : 1751342593792
   },
-  "4f96f58b-f369-4b10-9bbb-c634340773f5" : {
-    "groupId" : "4f96f58b-f369-4b10-9bbb-c634340773f5",
-    "name" : "Grupo pedro e vitor",
-    "adminId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
-    "members" : [ "f05d57ec-5161-4621-8abf-94a0e1574649" ],
-    "createdAt" : 1751304858993,
-    "lastMessage" : "Vitor saiu do grupo",
-    "lastMessageTime" : 1751315537648
-  },
-  "2349970d-69b7-4d68-8276-ab9854023103" : {
-    "groupId" : "2349970d-69b7-4d68-8276-ab9854023103",
-    "name" : "Teste 2",
-    "adminId" : "cdeafc40-a463-4f72-9d33-e7e50e2dff5a",
-    "members" : [ "cdeafc40-a463-4f72-9d33-e7e50e2dff5a", "4fc734c6-8432-4c95-ba4f-cb22138ab202", "c8715738-9cd4-4d1a-bfaf-b659d0826fab" ],
-    "createdAt" : 1751304752185,
-    "lastMessage" : "Teste1 criou o grupo",
-    "lastMessageTime" : 1751304752203
-  },
-  "fa724bf3-feff-484d-bceb-ae600496005d" : {
-    "groupId" : "fa724bf3-feff-484d-bceb-ae600496005d",
-    "name" : "Teste",
-    "adminId" : "791b23fa-47e3-4462-9544-07c4b6ae0aa2",
-    "members" : [ "791b23fa-47e3-4462-9544-07c4b6ae0aa2" ],
-    "createdAt" : 1751315816753,
-    "lastMessage" : "Pedro saiu do grupo",
-    "lastMessageTime" : 1751315840864
-  },
-  "9f96df77-6d12-481a-814d-bd5f6767ea09" : {
-    "groupId" : "9f96df77-6d12-481a-814d-bd5f6767ea09",
-    "name" : "Teste notificacao",
-    "adminId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
-    "members" : [ "f05d57ec-5161-4621-8abf-94a0e1574649", "791b23fa-47e3-4462-9544-07c4b6ae0aa2" ],
-    "createdAt" : 1751318376334,
-    "lastMessage" : "Pedro criou o grupo",
-    "lastMessageTime" : 1751318376351
-  },
-  "09f1bab4-0040-4ddf-8832-29c689ff5566" : {
-    "groupId" : "09f1bab4-0040-4ddf-8832-29c689ff5566",
+  "f9cce055-6f66-497e-ba8f-b7ccd0b06b68" : {
+    "groupId" : "f9cce055-6f66-497e-ba8f-b7ccd0b06b68",
     "name" : "Pedro Admin",
-    "adminId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
-    "members" : [ "f05d57ec-5161-4621-8abf-94a0e1574649" ],
-    "createdAt" : 1751325034158,
-    "lastMessage" : "Vitor saiu do grupo",
-    "lastMessageTime" : 1751328472699
+    "adminId" : "ee7840b2-5d3e-4ddb-a4c2-b55a3fd83b52",
+    "members" : [ "ee7840b2-5d3e-4ddb-a4c2-b55a3fd83b52", "9c379472-610c-4d26-a061-0081bfc05038", "88379487-72c3-4ba8-8909-2258c01e561a", "568d24e6-997b-46d9-a8de-f0ab2c57f674" ],
+    "createdAt" : 1751340062601,
+    "lastMessage" : "Pamela foi adicionado ao grupo",
+    "lastMessageTime" : 1751343007021
+  },
+  "74fc60b1-922e-4295-a9d8-85b47207bf31" : {
+    "groupId" : "74fc60b1-922e-4295-a9d8-85b47207bf31",
+    "name" : "Testeee",
+    "adminId" : "ee7840b2-5d3e-4ddb-a4c2-b55a3fd83b52",
+    "members" : [ "ee7840b2-5d3e-4ddb-a4c2-b55a3fd83b52", "568d24e6-997b-46d9-a8de-f0ab2c57f674", "9c379472-610c-4d26-a061-0081bfc05038", "88379487-72c3-4ba8-8909-2258c01e561a" ],
+    "createdAt" : 1751341144429,
+    "lastMessage" : "Vitor foi adicionado ao grupo",
+    "lastMessageTime" : 1751341553800
+  },
+  "55d9a7b6-473e-4224-b8e9-558aab4b043c" : {
+    "groupId" : "55d9a7b6-473e-4224-b8e9-558aab4b043c",
+    "name" : "Sem Pamela e vitor",
+    "adminId" : "ee7840b2-5d3e-4ddb-a4c2-b55a3fd83b52",
+    "members" : [ "ee7840b2-5d3e-4ddb-a4c2-b55a3fd83b52", "9c379472-610c-4d26-a061-0081bfc05038", "88379487-72c3-4ba8-8909-2258c01e561a", "568d24e6-997b-46d9-a8de-f0ab2c57f674" ],
+    "createdAt" : 1751341998102,
+    "lastMessage" : "Pamela foi adicionado ao grupo",
+    "lastMessageTime" : 1751342088207
   }
 }

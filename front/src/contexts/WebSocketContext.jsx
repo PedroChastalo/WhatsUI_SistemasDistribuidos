@@ -102,8 +102,7 @@ export const WebSocketProvider = ({ children }) => {
     fetchPendingGroupRequests: store.fetchPendingGroupRequests,
     getPendingGroupRequests: store.fetchPendingGroupRequests,
     
-    // Membros do grupo
-    getGroupMembers: store.getGroupMembers,
+
     
     // Funções para o componente Chat
     getMessages: async (chatId, chatType) => {
