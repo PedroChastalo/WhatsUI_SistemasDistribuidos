@@ -38,6 +38,10 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         super(new InetSocketAddress(port));
         initRMIServices();
     }
+
+    public boolean isUserOnline(String userId) {
+        return sessions.values().stream().anyMatch(id -> id != null && id.equals(userId));
+    }
     
     private void initRMIServices() {
         try {
@@ -144,7 +148,7 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
                     
                 // Usuários
                 case "getUsers":
-                    handleGetUsers(conn, response);
+                    handleGetUsers(conn, null, response);
                     break;
                 case "getUser":
                     handleGetUser(conn, data, response);
@@ -284,23 +288,25 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
     
     // ===== Handlers para requisições de usuários =====
     
-    private void handleGetUsers(WebSocket conn, Map<String, Object> response) throws Exception {
+    private void handleGetUsers(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
             response.put("success", false);
             response.put("error", "Usuário não autenticado");
             return;
         }
-        
-        try {
-            List<User> users = userService.getAllUsers(sessionId);
-            response.put("success", true);
-            response.put("data", users);
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("error", "Erro ao obter usuários: " + e.getMessage());
-            throw e;
+
+        List<User> users = userService.getAllUsers(sessionId); // ou método equivalente
+        List<Map<String, Object>> usersWithStatus = new ArrayList<>();
+        for (User user : users) {
+            Map<String, Object> userMap = new HashMap<>();
+            userMap.put("userId", user.getUserId());
+            userMap.put("displayName", user.getDisplayName());
+            userMap.put("online", isUserOnline(user.getUserId()));
+            usersWithStatus.add(userMap);
         }
+        response.put("success", true);
+        response.put("data", usersWithStatus);
     }
     
     private void handleGetUser(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
