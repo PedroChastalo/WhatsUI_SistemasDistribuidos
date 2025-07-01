@@ -32,9 +32,15 @@ public class PendingJoinRequestDAO {
         return list != null ? new ArrayList<>(list) : new ArrayList<>();
     }
 
-    public synchronized void addRequest(String adminId, JoinRequest req) {
-        pendingRequests.computeIfAbsent(adminId, k -> new ArrayList<>()).add(req);
+    public synchronized boolean addRequest(String adminId, JoinRequest req) {
+        List<JoinRequest> list = pendingRequests.computeIfAbsent(adminId, k -> new ArrayList<>());
+        boolean exists = list.stream().anyMatch(r -> r.groupId.equals(req.groupId) && r.userId.equals(req.userId));
+        if (exists) {
+            return false; // já existe
+        }
+        list.add(req);
         saveData();
+        return true;
     }
 
     public synchronized List<JoinRequest> getAndRemoveRequests(String adminId) {
@@ -49,12 +55,14 @@ public class PendingJoinRequestDAO {
 
     public static class JoinRequest {
         public String groupId;
+        public String groupName; // novo campo
         public String userId;
         public String userName;
 
         public JoinRequest() {}
-        public JoinRequest(String groupId, String userId, String userName) {
+        public JoinRequest(String groupId, String groupName, String userId, String userName) {
             this.groupId = groupId;
+            this.groupName = groupName;
             this.userId = userId;
             this.userName = userName;
         }

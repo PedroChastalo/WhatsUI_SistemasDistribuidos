@@ -15,13 +15,13 @@ import org.java_websocket.server.WebSocketServer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import br.com.whatsut.service.AuthenticationService;
-import br.com.whatsut.security.SessionManager;
-import br.com.whatsut.service.UserService;
-import br.com.whatsut.service.MessageService;
-import br.com.whatsut.service.GroupService;
 import br.com.whatsut.dao.PendingJoinRequestDAO;
 import br.com.whatsut.model.User;
+import br.com.whatsut.security.SessionManager;
+import br.com.whatsut.service.AuthenticationService;
+import br.com.whatsut.service.GroupService;
+import br.com.whatsut.service.MessageService;
+import br.com.whatsut.service.UserService;
 
 public class WhatsUTWebSocketServer extends WebSocketServer {
     private final Map<WebSocket, String> sessions = new ConcurrentHashMap<>();
@@ -85,6 +85,7 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
                             Map<String, Object> notify = new HashMap<>();
                             notify.put("type", "joinGroupRequest");
                             notify.put("groupId", req.groupId);
+                            notify.put("groupName", req.groupName);
                             notify.put("userId", req.userId);
                             notify.put("userName", req.userName);
                             conn.send(objectMapper.writeValueAsString(notify));
@@ -861,9 +862,18 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
                 
                 response.put("success", true);
                 response.put("message", "Usuário adicionado ao grupo com sucesso");
+                // Remove pending join request since it's handled
+                pendingJoinRequestDAO.removeRequest(adminId, groupId, userId);
             } catch (Exception e) {
-                response.put("success", false);
-                response.put("error", "Erro ao adicionar usuário ao grupo: " + e.getMessage());
+                if (e.getMessage() != null && e.getMessage().toLowerCase().contains("já é membro")) {
+                    // Treat as success if the user is already in the group
+                    pendingJoinRequestDAO.removeRequest(adminId, groupId, userId);
+                    response.put("success", true);
+                    response.put("message", "Usuário já era membro do grupo");
+                } else {
+                    response.put("success", false);
+                    response.put("error", "Erro ao adicionar usuário ao grupo: " + e.getMessage());
+                }
             }
         } else {
             // Notificar o usuário que foi rejeitado, se estiver online
@@ -885,6 +895,8 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
             
             response.put("success", true);
             response.put("message", "Solicitação rejeitada com sucesso");
+            // Remove pending join request after rejection
+            pendingJoinRequestDAO.removeRequest(adminId, groupId, userId);
         }
     }
     
@@ -976,7 +988,7 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         }
 
         PendingJoinRequestDAO.JoinRequest req = new PendingJoinRequestDAO.JoinRequest(
-            (String) groupMap.get("groupId"), user.getUserId(), user.getDisplayName()
+            (String) groupMap.get("groupId"), (String) groupMap.get("name"), user.getUserId(), user.getDisplayName()
         );
 
         if (adminConn != null) {
@@ -984,9 +996,9 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         Map<String, Object> notify = new HashMap<>();
         notify.put("type", "joinGroupRequest");
         notify.put("groupId", (String) groupMap.get("groupId"));
+        notify.put("groupName", (String) groupMap.get("name"));
         notify.put("userId", user.getUserId());
         notify.put("userName", user.getDisplayName());
-        notify.put("groupName", (String) groupMap.get("name"));
         
         // Log detalhado antes de enviar a notificação
         System.out.println("[WhatsUTWebSocketServer] Enviando notificação de solicitação de grupo para admin " + adminId);

@@ -367,7 +367,18 @@ class WebSocketClient {
       
       // Se é um evento do servidor
       if (message.type) {
-        this.dispatchEvent(message.type, message.data);
+        // Alguns eventos do backend podem não possuir a propriedade "data" e já trazer
+        // todos os campos na raiz do objeto. Caso "data" seja undefined, encaminhamos
+        // o próprio objeto (sem o campo type) como payload para manter compatibilidade.
+        let payload;
+        if (message.data !== undefined) {
+          payload = message.data;
+        } else {
+          // Remover o campo type para evitar confusão no consumidor
+          const { type, ...rest } = message;
+          payload = rest;
+        }
+        this.dispatchEvent(message.type, payload);
       } else {
         console.warn('[WebSocket] Mensagem sem tipo recebida:', message);
       }

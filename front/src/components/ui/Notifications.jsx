@@ -10,10 +10,13 @@ import { Button } from '@/components/ui/button';
 const Notifications = () => {
   const { notifications, clearNotification, respondToGroupRequest } = useWebSocketStore();
 
-  // Depurar notificações
-  console.log('[Notifications] Renderizando notificações:', notifications);
+  // Filtrar notificações que devem aparecer como toast
+  const displayNotifications = notifications.filter(n => n.type !== 'groupRequest');
 
-  if (notifications.length === 0) return null;
+  // Depurar notificações
+  console.log('[Notifications] Renderizando notificações (toast):', displayNotifications);
+
+  if (displayNotifications.length === 0) return null;
   
   // Função para responder a uma solicitação de grupo
   const handleRespondToRequest = async (notification, accept) => {
@@ -57,7 +60,7 @@ const Notifications = () => {
   return (
     <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
       <AnimatePresence>
-        {notifications.map((notification) => (
+        {displayNotifications.map((notification) => (
           <motion.div
             key={notification.id}
             initial={{ opacity: 0, y: -20, scale: 0.95 }}

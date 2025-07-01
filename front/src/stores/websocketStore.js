@@ -1638,51 +1638,51 @@ const useWebSocketStore = create((set, get) => ({
         console.log("[WebSocketStore] Estado atual - usuário:", get().currentUser);
         
         if (data && data.groupId && data.userId) {
-          // Verificar se o usuário atual é o administrador do grupo
           const currentUser = get().currentUser;
           const groups = get().groups;
-          
-          console.log("[WebSocketStore] Verificando se o usuário atual é admin do grupo:", {
-            currentUserId: currentUser?.userId,
-            groups: groups,
-            targetGroupId: data.groupId
-          });
-          
-          // Encontrar o grupo na lista de grupos do usuário
-          const targetGroup = groups.find(g => g.groupId === data.groupId);
-          
-          if (targetGroup && currentUser && targetGroup.adminId === currentUser.userId) {
-            console.log("[WebSocketStore] Usuário atual é admin do grupo, adicionando solicitação pendente");
-            
-            // Adicionar à lista de solicitações pendentes
+
+          // Tenta identificar o grupo, mas não bloqueia o fluxo caso ainda não tenha sido carregado
+          const targetGroup = groups.find((g) => g.groupId === data.groupId);
+
+          // O backend só envia este evento ao administrador do grupo, então se o usuário estiver autenticado podemos assumir que é o admin.
+          if (currentUser) {
+            console.log("[WebSocketStore] Processando joinGroupRequest para admin", {
+              currentUserId: currentUser.userId,
+              targetGroupId: data.groupId,
+              targetGroup,
+            });
+
+            // Adiciona (ou substitui) a solicitação pendente
             set((state) => ({
               pendingGroupRequests: [
                 ...state.pendingGroupRequests.filter(
-                  req => !(req.userId === data.userId && req.groupId === data.groupId)
+                  (req) => !(req.userId === data.userId && req.groupId === data.groupId)
                 ),
-                data
-              ]
+                data,
+              ],
             }));
-            
-            // Adicionar notificação
+
+            // Mensagem amigável usando o nome do grupo, se disponível; caso contrário usa o ID
+            const groupName = targetGroup?.name || data.groupName || data.groupId;
+
             get().addNotification({
               type: "groupRequest",
-              title: "Solicitação de grupo",
-              message: `${data.userName || data.username || "Alguém"} solicitou entrada no grupo ${targetGroup.name || data.groupName || data.groupId}`,
+              title: "Solicitação de entrada em grupo",
+              message: `${data.userName || data.username || "Alguém"} solicitou entrada no grupo ${groupName}`,
               variant: "info",
               timestamp: Date.now(),
               data: {
                 userId: data.userId,
                 groupId: data.groupId,
                 userName: data.userName || data.username,
-                groupName: targetGroup.name || data.groupName
-              }
+                groupName,
+              },
             });
           } else {
-            console.log("[WebSocketStore] Usuário atual não é admin do grupo ou grupo não encontrado");
+            console.warn("[WebSocketStore] joinGroupRequest recebido sem usuário autenticado", data);
           }
         } else {
-          console.warn("[WebSocketStore] Dados de solicitação de grupo incompletos:", data);
+          console.warn("[WebSocketStore] Dados de joinGroupRequest incompletos:", data);
         }
         break;
 
