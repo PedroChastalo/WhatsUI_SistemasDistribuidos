@@ -40,6 +40,16 @@
     "fileUrl" : null,
     "fileType" : null,
     "groupMessage" : true
+  }, {
+    "messageId" : "43f0ed66-7746-4e2d-b4ef-8f10350953b8",
+    "senderId" : "system",
+    "senderName" : "Sistema",
+    "receiverId" : "f9cce055-6f66-497e-ba8f-b7ccd0b06b68",
+    "content" : "Pamela foi adicionado ao grupo",
+    "timestamp" : 1751343007019,
+    "fileUrl" : null,
+    "fileType" : null,
+    "groupMessage" : true
   } ],
   "74fc60b1-922e-4295-a9d8-85b47207bf31" : [ {
     "messageId" : "14a851a5-c785-4c57-8279-59aefbdc99da",

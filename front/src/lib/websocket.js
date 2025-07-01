@@ -356,9 +356,22 @@ class WebSocketClient {
           // Se success for true ou não estiver definido, consideramos sucesso
           // Retornar message.data ou um objeto vazio se não houver dados
           // Incluir qualquer mensagem de texto na resposta
-          const responseData = message.data || {};
-          if (message.message) {
-            responseData.message = message.message;
+          let responseData;
+          if (Array.isArray(message.data)) {
+            // Manter arrays intactos para não quebrar chamadas que esperam Array
+            responseData = [...message.data];
+          } else if (message.data && typeof message.data === 'object') {
+            // Clonar objeto
+            responseData = { ...message.data };
+          } else {
+            responseData = {};
+          }
+
+          // Adicionar metadados apenas quando responseData for objeto (não Array)
+          if (!Array.isArray(responseData)) {
+            responseData.success = message.success !== false;
+            if (message.error) responseData.error = message.error;
+            if (message.message) responseData.message = message.message;
           }
           resolve(responseData);
         }
