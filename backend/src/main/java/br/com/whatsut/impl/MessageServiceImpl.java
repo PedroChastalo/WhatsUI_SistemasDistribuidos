@@ -149,4 +149,45 @@ public class MessageServiceImpl implements MessageService {
         
         return map;
     }
+
+    @Override
+    public Map<String, Object> sendPrivateFile(String sessionId, String receiverId,
+                                               String fileName, String fileType, byte[] fileData) throws RemoteException {
+        // Validar sessão
+        String senderId = SessionManager.getUserIdFromSession(sessionId);
+        if (senderId == null) {
+            throw new RemoteException("Sessão inválida");
+        }
+
+        User sender = userDAO.getUserById(senderId);
+        if (sender == null) {
+            throw new RemoteException("Remetente não encontrado");
+        }
+        User receiver = userDAO.getUserById(receiverId);
+        if (receiver == null) {
+            throw new RemoteException("Destinatário não encontrado");
+        }
+
+        try {
+            // Garantir diretório uploads
+            java.io.File uploadDir = new java.io.File("uploads");
+            if (!uploadDir.exists()) {
+                uploadDir.mkdirs();
+            }
+            String storedName = System.currentTimeMillis() + "_" + fileName;
+            java.io.File target = new java.io.File(uploadDir, storedName);
+            java.nio.file.Files.write(target.toPath(), fileData);
+
+            // Criar mensagem
+            Message message = new Message(senderId, sender.getDisplayName(), receiverId, "[FILE] " + fileName, false);
+            message.setFileUrl("data:" + fileType + ";base64," + java.util.Base64.getEncoder().encodeToString(fileData));
+            message.setFileType(fileType);
+
+            messageDAO.addPrivateMessage(senderId, receiverId, message);
+
+            return messageToMap(message);
+        } catch (Exception e) {
+            throw new RemoteException("Falha ao salvar arquivo: " + e.getMessage());
+        }
+    }
 }

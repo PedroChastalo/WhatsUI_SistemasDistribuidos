@@ -48,6 +48,11 @@ public interface GroupService extends Remote {
     Map<String, Object> sendGroupMessage(String sessionId, String groupId, String content) throws RemoteException;
     
     /**
+     * Envia um arquivo para o grupo (dados em base64).
+     */
+    Map<String, Object> sendGroupFile(String sessionId, String groupId, String fileName, String fileType, byte[] fileData) throws RemoteException;
+    
+    /**
      * Obtém os membros de um grupo
      * @param sessionId ID da sessão do usuário autenticado
      * @param groupId ID do grupo

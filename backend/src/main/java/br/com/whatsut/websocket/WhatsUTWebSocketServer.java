@@ -185,6 +185,12 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
                 case "sendGroupMessage":
                     handleSendGroupMessage(conn, data, response);
                     break;
+                case "sendPrivateFile":
+                    handleSendPrivateFile(conn, data, response);
+                    break;
+                case "sendGroupFile":
+                    handleSendGroupFile(conn, data, response);
+                    break;
                 case "getGroupMembers":
                     handleGetGroupMembers(conn, data, response);
                     break;
@@ -461,6 +467,9 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         }
     }
     
+
+
+
     // ===== Handlers para grupos =====
     
     private void handleGetGroups(WebSocket conn, Map<String, Object> response) throws Exception {
@@ -1040,4 +1049,62 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         
         return null;
     }
+
+    // ====== Novos handlers de upload de arquivo ======
+    private void handleSendPrivateFile(WebSocket conn, Map<String,Object> data, Map<String,Object> response) throws Exception {
+        String sessionId = sessions.get(conn);
+        if (sessionId == null) {
+            response.put("success", false);
+            response.put("error", "Usuário não autenticado");
+            return;
+        }
+        String receiverId = (String) data.getOrDefault("receiverId", data.get("userId"));
+        String fileName   = (String) data.get("fileName");
+        String fileType   = (String) data.get("fileType");
+        String fileDataB64 = (String) data.get("fileData");
+        if (receiverId == null || fileName == null || fileDataB64 == null) {
+            response.put("success", false);
+            response.put("error", "Parâmetros faltando");
+            return;
+        }
+        byte[] bytes = java.util.Base64.getDecoder().decode(fileDataB64);
+        try {
+            Map<String,Object> msg = messageService.sendPrivateFile(sessionId, receiverId, fileName, fileType, bytes);
+            response.put("success", true);
+            response.put("data", msg);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Erro ao enviar arquivo: " + e.getMessage());
+            throw e;
+        }
+    }
+
+    private void handleSendGroupFile(WebSocket conn, Map<String,Object> data, Map<String,Object> response) throws Exception {
+        String sessionId = sessions.get(conn);
+        if (sessionId == null) {
+            response.put("success", false);
+            response.put("error", "Usuário não autenticado");
+            return;
+        }
+        String groupId = (String) data.get("groupId");
+        String fileName = (String) data.get("fileName");
+        String fileType = (String) data.get("fileType");
+        String fileDataB64 = (String) data.get("fileData");
+        if (groupId == null || fileName == null || fileDataB64 == null) {
+            response.put("success", false);
+            response.put("error", "Parâmetros faltando");
+            return;
+        }
+        byte[] bytes = java.util.Base64.getDecoder().decode(fileDataB64);
+        try {
+            Map<String,Object> msg = groupService.sendGroupFile(sessionId, groupId, fileName, fileType, bytes);
+            response.put("success", true);
+            response.put("data", msg);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("error", "Erro ao enviar arquivo: " + e.getMessage());
+            throw e;
+        }
+    }
 }
+

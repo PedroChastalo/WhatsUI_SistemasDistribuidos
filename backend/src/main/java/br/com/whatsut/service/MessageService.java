@@ -36,4 +36,15 @@ public interface MessageService extends Remote {
      * @throws RemoteException Erro RMI
      */
     Map<String, Object> sendPrivateMessage(String sessionId, String receiverId, String content) throws RemoteException;
+    
+    /**
+     * Envia um ARQUIVO em mensagem privada (conteúdo em base64).
+     * @param sessionId sessão válida
+     * @param receiverId destinatário
+     * @param fileName nome original do arquivo
+     * @param fileType content-type MIME
+     * @param fileData bytes do arquivo
+     * @return dados da mensagem enviada
+     */
+    Map<String, Object> sendPrivateFile(String sessionId, String receiverId, String fileName, String fileType, byte[] fileData) throws RemoteException;
 }

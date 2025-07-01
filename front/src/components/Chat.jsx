@@ -283,7 +283,8 @@ export default function Chat({ chat, onBack }) {
 
     try {
       // Identificar o ID correto com base no tipo de chat
-      const chatId = chat.type === "user" ? chat.userId : chat.groupId;
+      const isGroupChat = chat.type === "group";
+      const chatId = isGroupChat ? chat.groupId : chat.userId;
       if (!chatId) {
         throw new Error("ID do destinatário não encontrado");
       }
@@ -317,8 +318,11 @@ export default function Chat({ chat, onBack }) {
       // Adicionar mensagem temporária ao estado
       setMessages((prev) => [...prev, tempMessage]);
 
+      // Normalizar o tipo para envio de arquivo
+      const sendType = isGroupChat ? "group" : "user";
+
       // Enviar arquivo para o servidor
-      const response = await sendFile(file, chatId, chat.type, fileType);
+      const response = await sendFile(file, chatId, sendType, fileType);
 
       // Atualizar mensagem temporária com informações do arquivo enviado
       setMessages((prev) =>
@@ -576,8 +580,30 @@ export default function Chat({ chat, onBack }) {
                 {messages.map((msg, index) => {
                   // Determinar se a mensagem é do usuário atual
                   // Garantir que a propriedade isOwn seja respeitada e não mude após a renderização inicial
+                  // Determinar se a mensagem pertence ao usuário atual
                   const isOwn =
                     msg.isOwn === true || msg.senderId === currentUser?.userId;
+
+                  // Verificar se a mensagem é um arquivo mesmo que o backend não envie a flag isFile (ex.: mensagens de grupo)
+                  const isFileMessage = msg.isFile === true ||
+                    (typeof msg.content === "string" && msg.content.startsWith("[FILE]"));
+
+                  // Extrair o nome do arquivo caso não venha explicitamente
+                  const inferredFileName = isFileMessage && !msg.fileName
+                    ? msg.content.replace("[FILE]", "").trim()
+                    : msg.fileName;
+
+                  // URL do arquivo pode chegar sem schema; normalizar aqui para evitar erros na tag <a>
+                  let normalizedFileUrl = msg.fileUrl;
+                  if (isFileMessage && normalizedFileUrl) {
+                    if (
+                      !normalizedFileUrl.startsWith("http") &&
+                      !normalizedFileUrl.startsWith("data:") &&
+                      !normalizedFileUrl.startsWith("blob:")
+                    ) {
+                      normalizedFileUrl = `data:application/octet-stream;base64,${normalizedFileUrl}`;
+                    }
+                  }
 
                   return (
                     <div
@@ -609,21 +635,33 @@ export default function Chat({ chat, onBack }) {
                             {msg.senderName || msg.sender || "Usuário"}
                           </p>
                         )}
-                        {msg.isFile ? (
+                        {isFileMessage ? (
                           <div>
                             <p>
                               <strong>Arquivo:</strong> {msg.fileName}
                             </p>
-                            {msg.fileUrl && (
-                              <a
-                                href={msg.fileUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`underline ${isOwn ? "text-blue-100" : "text-blue-600"}`}
-                              >
-                                Baixar
-                              </a>
-                            )}
+                            {msg.fileUrl && (() => {
+                              // Certificar-se de que o link tenha um esquema válido. Se o back-end retornar apenas
+                              // o base64 sem o prefixo "data:", adicionamos um prefixo padrão.
+                              let downloadHref = msg.fileUrl;
+                              if (
+                                downloadHref &&
+                                !downloadHref.startsWith("http") &&
+                                !downloadHref.startsWith("data:") &&
+                                !downloadHref.startsWith("blob:")
+                              ) {
+                                downloadHref = `data:application/octet-stream;base64,${downloadHref}`;
+                              }
+                              return (
+                                <a
+                                  href={downloadHref}
+                                  download={msg.fileName}
+                                  className={`underline ${isOwn ? "text-blue-100" : "text-blue-600"}`}
+                                >
+                                  Baixar
+                                </a>
+                              );
+                            })()}
                           </div>
                         ) : (
                           <p>{msg.content}</p>

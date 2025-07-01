@@ -155,6 +155,50 @@ public class GroupServiceImpl implements GroupService {
     }
     
     @Override
+    public Map<String, Object> sendGroupFile(String sessionId, String groupId,
+                                             String fileName, String fileType, byte[] fileData) throws RemoteException {
+        // Validar sessão
+        String senderId = SessionManager.getUserIdFromSession(sessionId);
+        if (senderId == null) {
+            throw new RemoteException("Sessão inválida");
+        }
+
+        User sender = userDAO.getUserById(senderId);
+        if (sender == null) {
+            throw new RemoteException("Remetente não encontrado");
+        }
+
+        Group group = groupDAO.getGroupById(groupId);
+        if (group == null) {
+            throw new RemoteException("Grupo não encontrado");
+        }
+
+        if (!group.getMembers().contains(senderId)) {
+            throw new RemoteException("Usuário não é membro do grupo");
+        }
+
+        try {
+            java.io.File uploadDir = new java.io.File("uploads");
+            if (!uploadDir.exists()) uploadDir.mkdirs();
+            String storedName = System.currentTimeMillis() + "_" + fileName;
+            java.io.File target = new java.io.File(uploadDir, storedName);
+            java.nio.file.Files.write(target.toPath(), fileData);
+
+            Message message = new Message(senderId, sender.getDisplayName(), groupId, "[FILE] " + fileName, true);
+            message.setFileUrl("data:" + fileType + ";base64," + java.util.Base64.getEncoder().encodeToString(fileData));
+            message.setFileType(fileType);
+
+            messageDAO.addGroupMessage(groupId, message);
+            groupDAO.updateLastMessage(groupId, message.getContent());
+
+            return messageToMap(message);
+        } catch (Exception e) {
+            throw new RemoteException("Falha ao salvar arquivo: " + e.getMessage());
+        }
+    
+    }
+    
+    @Override
     public List<Map<String, Object>> getGroupMembers(String sessionId, String groupId) throws RemoteException {
         // Validar sessão
         String userId = SessionManager.getUserIdFromSession(sessionId);

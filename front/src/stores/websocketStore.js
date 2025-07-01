@@ -462,111 +462,48 @@ const useWebSocketStore = create((set, get) => ({
   },
 
   sendPrivateFile: async (receiverId, file, fileType = null) => {
-    const { sessionId, currentUser } = get();
-
-    // Validação de parâmetros
-    if (!sessionId || !currentUser || !receiverId || !file) {
-      const errorMsg = "Parâmetros inválidos";
-      console.error("sendPrivateFile:", errorMsg, { receiverId, file });
-      set({ fetchError: errorMsg });
-      throw new Error(errorMsg);
+    const { currentUser } = get();
+    if (!currentUser || !receiverId || !file) {
+      const msg = "Parâmetros inválidos";
+      set({ fetchError: msg });
+      throw new Error(msg);
     }
-
     try {
-      // Criar FormData para envio do arquivo
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("sessionId", sessionId);
-      formData.append("receiverId", receiverId);
-      if (fileType) {
-        formData.append("fileType", fileType);
-      }
-
-      // Em modo mock, simular envio
-      if (websocketClient.mockMode) {
-        const mockResponse = {
-          messageId: "file_" + Date.now(),
-          timestamp: Date.now(),
-          fileName: file.name,
-          fileUrl: URL.createObjectURL(file),
-          fileType: fileType || file.type,
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = reader.result;
+          resolve(typeof res === "string" ? res.split(",")[1] : "");
         };
-
-        // Adicionar mensagem ao histórico local
-        set((state) => {
-          const currentMessages = state.privateMessages[receiverId] || [];
-
-          return {
-            privateMessages: {
-              ...state.privateMessages,
-              [receiverId]: [
-                ...currentMessages,
-                {
-                  messageId: mockResponse.messageId,
-                  senderId: currentUser.userId,
-                  senderName: currentUser.displayName,
-                  content: `Arquivo: ${file.name}`,
-                  fileName: file.name,
-                  fileUrl: mockResponse.fileUrl,
-                  fileType: mockResponse.fileType,
-                  timestamp: mockResponse.timestamp,
-                  status: "sent",
-                  isOwn: true,
-                  isFile: true,
-                },
-              ],
-            },
-          };
-        });
-
-        // Atualizar última mensagem na conversa
-        get().updateConversationLastMessage(
-          receiverId,
-          `Arquivo: ${file.name}`,
-          mockResponse.timestamp
-        );
-
-        return mockResponse;
-      }
-
-      // Enviar para o servidor via API REST (não WebSocket)
-      const response = await fetch("/api/messages/private/file", {
-        method: "POST",
-        body: formData,
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
       });
 
-      if (!response.ok) {
-        throw new Error(`Erro ao enviar arquivo: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      // Validar resposta
-      if (!result || !result.messageId || !result.fileUrl) {
-        const errorMsg = "Formato de resposta inválido do servidor";
-        console.error("sendPrivateFile:", errorMsg, result);
-        set({ fetchError: errorMsg });
-        throw new Error(errorMsg);
-      }
+      const wsRes = await websocketClient.sendRequest("sendPrivateFile", {
+        receiverId,
+        fileName: file.name,
+        fileType: fileType || file.type,
+        fileData: base64Data,
+      });
+      if (!wsRes || !wsRes.messageId) throw new Error("Resposta inválida");
 
       // Adicionar mensagem ao histórico local
       set((state) => {
         const currentMessages = state.privateMessages[receiverId] || [];
-
         return {
           privateMessages: {
             ...state.privateMessages,
             [receiverId]: [
               ...currentMessages,
               {
-                messageId: result.messageId,
+                messageId: wsRes.messageId,
                 senderId: currentUser.userId,
                 senderName: currentUser.displayName,
                 content: `Arquivo: ${file.name}`,
                 fileName: file.name,
-                fileUrl: result.fileUrl,
-                fileType: result.fileType,
-                timestamp: result.timestamp,
+                fileUrl: wsRes.fileUrl || "",
+                fileType: wsRes.fileType || fileType || file.type,
+                timestamp: wsRes.timestamp,
                 status: "sent",
                 isOwn: true,
                 isFile: true,
@@ -580,14 +517,73 @@ const useWebSocketStore = create((set, get) => ({
       get().updateConversationLastMessage(
         receiverId,
         `Arquivo: ${file.name}`,
-        result.timestamp
+        wsRes.timestamp
       );
 
-      return result;
+      return wsRes;
     } catch (error) {
       console.error("Erro ao enviar arquivo em mensagem privada:", error);
       set({ fetchError: `Erro ao enviar arquivo: ${error.message}` });
       throw error;
+    }
+  },
+
+  // Envio de arquivo para grupo
+  sendGroupFile: async (groupId, file, fileType = null) => {
+    const { currentUser } = get();
+    if (!currentUser || !groupId || !file) {
+      const msg = "Parâmetros inválidos";
+      set({ fetchError: msg });
+      throw new Error(msg);
+    }
+    try {
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = reader.result;
+          resolve(typeof res === "string" ? res.split(",")[1] : "");
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const wsRes = await websocketClient.sendRequest("sendGroupFile", {
+        groupId,
+        fileName: file.name,
+        fileType: fileType || file.type,
+        fileData: base64Data,
+      });
+      if (!wsRes || !wsRes.messageId) throw new Error("Resposta inválida");
+
+      set((state) => {
+        const msgs = state.groupMessages[groupId] || [];
+        return {
+          groupMessages: {
+            ...state.groupMessages,
+            [groupId]: [
+              ...msgs,
+              {
+                messageId: wsRes.messageId,
+                senderId: currentUser.userId,
+                senderName: currentUser.displayName,
+                content: `Arquivo: ${file.name}`,
+                fileName: file.name,
+                fileUrl: wsRes.fileUrl,
+                fileType: wsRes.fileType,
+                timestamp: wsRes.timestamp,
+                status: "sent",
+                isOwn: true,
+                isFile: true,
+              },
+            ],
+          },
+        };
+      });
+      return wsRes;
+    } catch (err) {
+      console.error("Erro ao enviar arquivo para grupo", err);
+      set({ fetchError: err.message });
+      throw err;
     }
   },
 
@@ -896,14 +892,16 @@ const useWebSocketStore = create((set, get) => ({
     }
 
     try {
-      // Criar FormData para envio do arquivo
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("sessionId", sessionId);
-      formData.append("groupId", groupId);
-      if (fileType) {
-        formData.append("fileType", fileType);
-      }
+      // Converter arquivo para base64 para envio via WebSocket
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = reader.result;
+          resolve(typeof res === "string" ? res.split(",")[1] : "");
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
 
       // Em modo mock, simular envio
       if (websocketClient.mockMode) {
@@ -952,25 +950,19 @@ const useWebSocketStore = create((set, get) => ({
         return mockResponse;
       }
 
-      // Enviar para o servidor via API REST (não WebSocket)
-      const response = await fetch("/api/messages/group/file", {
-        method: "POST",
-        body: formData,
+      // Enviar via WebSocket RPC
+      const wsRes = await websocketClient.sendRequest("sendGroupFile", {
+        groupId,
+        fileName: file.name,
+        fileType: fileType || file.type,
+        fileData: base64Data,
       });
+      if (!wsRes || !wsRes.messageId) throw new Error("Resposta inválida");
 
-      if (!response.ok) {
-        throw new Error(`Erro ao enviar arquivo: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-
-      // Validar resposta
-      if (!result || !result.messageId || !result.fileUrl) {
-        const errorMsg = "Formato de resposta inválido do servidor";
-        console.error("sendGroupFile:", errorMsg, result);
-        set({ fetchError: errorMsg });
-        throw new Error(errorMsg);
-      }
+      const result = {
+        ...wsRes,
+        fileUrl: wsRes.fileUrl || `data:${fileType || file.type};base64,${base64Data}`,
+      };
 
       // Adicionar mensagem ao histórico local
       set((state) => {
