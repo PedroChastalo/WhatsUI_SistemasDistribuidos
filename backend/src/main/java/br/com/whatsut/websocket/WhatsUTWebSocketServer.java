@@ -80,7 +80,7 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
                     // Enviar notificações pendentes se for admin
                     User user = userService.getUserById(sessionId, userId);
                     if (user != null) {
-                        List<PendingJoinRequestDAO.JoinRequest> pendings = pendingJoinRequestDAO.getAndRemoveRequests(user.getUserId());
+                        List<PendingJoinRequestDAO.JoinRequest> pendings = pendingJoinRequestDAO.getRequests(user.getUserId());
                         for (PendingJoinRequestDAO.JoinRequest req : pendings) {
                             Map<String, Object> notify = new HashMap<>();
                             notify.put("type", "joinGroupRequest");
@@ -208,6 +208,9 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
                     break;
                 case "respondJoinGroup":
                     handleRespondJoinGroup(conn, data, response);
+                    break;
+                case "removeJoinRequestNotification":
+                    handleRemoveJoinRequestNotification(conn, data, response);
                     break;
                 default:
                     response.put("success", false);
@@ -722,6 +725,28 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         } catch (Exception e) {
             response.put("success", false);
             response.put("error", e.getMessage());
+        }
+    }
+
+    private void handleRemoveJoinRequestNotification(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
+        String sessionId = sessions.get(conn);
+        if (sessionId == null) {
+            response.put("success", false);
+            response.put("error", "Usuário não autenticado");
+            return;
+        }
+        String adminId = SessionManager.getUserIdFromSession(sessionId);
+        String groupId = (String) data.get("groupId");
+        String userId = (String) data.get("userId");
+        if (adminId == null || groupId == null || userId == null) {
+            response.put("success", false);
+            response.put("error", "Parâmetros obrigatórios não fornecidos");
+            return;
+        }
+        boolean removed = pendingJoinRequestDAO.removeRequest(adminId, groupId, userId);
+        response.put("success", removed);
+        if (!removed) {
+            response.put("error", "Notificação não encontrada ou já removida");
         }
     }
     

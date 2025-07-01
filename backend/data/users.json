@@ -58,5 +58,15 @@
     "status" : "offline",
     "lastSeen" : 1751304820843,
     "active" : true
+  },
+  "a39c270b-84f8-4bb6-819f-0ed8f733c490" : {
+    "userId" : "a39c270b-84f8-4bb6-819f-0ed8f733c490",
+    "username" : "carol",
+    "email" : "carol@email.com",
+    "displayName" : "carol",
+    "passwordHash" : "$2a$12$52hUT.2oMHrMtqu2JT8IY.iQcZFYWkW.Ct2JcMLh3OyiZd5gsd0Ri",
+    "status" : "online",
+    "lastSeen" : 1751328527465,
+    "active" : true
   }
 }

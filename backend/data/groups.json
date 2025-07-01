@@ -3,10 +3,10 @@
     "groupId" : "96f93304-49ae-4cd4-8a6c-01c98bfba894",
     "name" : "Teste",
     "adminId" : "cdeafc40-a463-4f72-9d33-e7e50e2dff5a",
-    "members" : [ "cdeafc40-a463-4f72-9d33-e7e50e2dff5a", "4fc734c6-8432-4c95-ba4f-cb22138ab202" ],
+    "members" : [ "cdeafc40-a463-4f72-9d33-e7e50e2dff5a" ],
     "createdAt" : 1751304443988,
-    "lastMessage" : "Ola",
-    "lastMessageTime" : 1751304454297
+    "lastMessage" : "Teste1 saiu do grupo",
+    "lastMessageTime" : 1751328403552
   },
   "4f96f58b-f369-4b10-9bbb-c634340773f5" : {
     "groupId" : "4f96f58b-f369-4b10-9bbb-c634340773f5",
@@ -48,9 +48,9 @@
     "groupId" : "09f1bab4-0040-4ddf-8832-29c689ff5566",
     "name" : "Pedro Admin",
     "adminId" : "f05d57ec-5161-4621-8abf-94a0e1574649",
-    "members" : [ "f05d57ec-5161-4621-8abf-94a0e1574649", "791b23fa-47e3-4462-9544-07c4b6ae0aa2" ],
+    "members" : [ "f05d57ec-5161-4621-8abf-94a0e1574649" ],
     "createdAt" : 1751325034158,
-    "lastMessage" : "Oii",
-    "lastMessageTime" : 1751325037919
+    "lastMessage" : "Vitor saiu do grupo",
+    "lastMessageTime" : 1751328472699
   }
 }
