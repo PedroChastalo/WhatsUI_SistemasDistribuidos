@@ -13,18 +13,17 @@ import {
   Send,
   Smile,
   UserMinus,
-  UserPlus,
   Users,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import AddUserModal from "./AddUserModal";
-import RemoveUserModal from "./RemoveUserModal";
+
+
 
 export default function Chat({ chat, onBack }) {
   const [message, setMessage] = useState("");
   const [showParticipants, setShowParticipants] = useState(false);
-  const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [showRemoveUserModal, setShowRemoveUserModal] = useState(false);
+  
+  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -38,36 +37,27 @@ export default function Chat({ chat, onBack }) {
     sendMessage,
     sendFile,
     getGroupMembers,
-    addUserToGroup,
     removeUserFromGroup,
     setGroupAdmin,
     leaveGroup,
     deleteGroup,
   } = useWebSocket();
 
-  // Estado para mensagens e participantes
   const [messages, setMessages] = useState([]);
   const [participants, setParticipants] = useState([]);
 
-  // Carregar mensagens e participantes
   useEffect(() => {
-    // Verificar se temos um chat válido
     if (!chat) {
       setError("Chat inválido - objeto de chat não fornecido");
       setIsLoading(false);
       return;
     }
-    
-    // Log para debug
-    console.log("Chat recebido:", JSON.stringify(chat));
 
     const loadData = async () => {
       setIsLoading(true);
       setError("");
       try {
-        // Determinar o tipo de chat e o ID apropriado
         let chatId;
-        // Inferir o tipo de chat com base nas propriedades presentes
         let chatType;
         if (chat.type) {
           chatType = chat.type;
@@ -76,40 +66,30 @@ export default function Chat({ chat, onBack }) {
         } else if (chat.groupId || chat.group) {
           chatType = 'group';
         } else {
-          // Default para 'user' se não conseguir determinar
           chatType = 'user';
         }
-        
-        // Extrair o ID do chat com base no tipo
+
         if (chatType === "private" || chatType === "user") {
-          // Tenta todas as possibilidades de ID para chats privados
           chatId = chat.userId || chat.id || chat.receiverId || (chat.user && chat.user.id);
-          
-          // Se ainda não encontrou, tenta extrair do objeto user
+
           if (!chatId && chat.user) {
             chatId = chat.user.userId || chat.user.id;
           }
         } else if (chatType === "group") {
-          // Tenta todas as possibilidades de ID para grupos
           chatId = chat.groupId || chat.id || (chat.group && chat.group.id);
-          
-          // Se ainda não encontrou, tenta extrair do objeto group
+
           if (!chatId && chat.group) {
             chatId = chat.group.groupId || chat.group.id;
           }
         }
-        
+
         if (!chatId) {
           console.error("Dados do chat incompletos:", chat);
           throw new Error("ID do chat não encontrado - verifique a estrutura do objeto chat");
         }
 
-        // Para chats que ainda não têm conversas (lastMessage = 'Iniciar conversa')
         if (chat.lastMessage === "Iniciar conversa") {
-          // Não tenta carregar mensagens, apenas inicializa com array vazio
           setMessages([]);
-          
-          // Se for grupo, ainda precisamos carregar os participantes
           if (chat.type === "group" && chat.groupId) {
             try {
               const members = await getGroupMembers(chat.groupId);
@@ -120,12 +100,10 @@ export default function Chat({ chat, onBack }) {
             }
           }
         } else {
-          // Para conversas existentes, carrega as mensagens normalmente
           try {
             const chatMessages = await getMessages(chatId, chat.type);
             setMessages(Array.isArray(chatMessages) ? chatMessages : []);
-            
-            // Carregar participantes se for um grupo
+
             if (chat.type === "group" && chat.groupId) {
               const members = await getGroupMembers(chat.groupId);
               setParticipants(Array.isArray(members) ? members : []);
@@ -366,29 +344,6 @@ export default function Chat({ chat, onBack }) {
     }
   };
 
-  // Funções para gerenciar participantes do grupo
-  const handleAddParticipant = async (userId) => {
-    if (!chat?.groupId || !userId) {
-      setError("Informações inválidas para adicionar participante");
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      await addUserToGroup(chat.groupId, userId);
-      
-      // Limpar cache e recarregar participantes
-      const members = await getGroupMembers(chat.groupId);
-      setParticipants(Array.isArray(members) ? members : []);
-      setError("");
-    } catch (err) {
-      console.error("Erro ao adicionar participante:", err);
-      setError("Erro ao adicionar participante: " + (err.message || "Desconhecido"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleRemoveParticipant = async (userId) => {
     if (!chat?.groupId || !userId) {
       setError("Informações inválidas para remover participante");
@@ -440,7 +395,7 @@ export default function Chat({ chat, onBack }) {
     }
     
     const participant = participants.find((p) => p.userId === currentUser.userId);
-    return participant && participant.role === "admin";
+    return participant && participant.isAdmin;
   };
 
   const handleLeaveGroup = async (shouldDeleteGroup = false) => {
@@ -804,8 +759,19 @@ export default function Chat({ chat, onBack }) {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {participant.role === "admin" && (
+                      {participant.isAdmin && (
                         <Crown size={16} className="text-yellow-500" />
+                      )}
+                      {isCurrentUserAdmin() && !participant.isAdmin && participant.userId !== currentUser?.userId && (
+                        <>
+                          <button
+                            onClick={() => handleRemoveParticipant(participant.userId)}
+                            className="text-red-500 hover:text-red-700"
+                            title="Remover"
+                          >
+                            <UserMinus size={16} />
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -813,48 +779,8 @@ export default function Chat({ chat, onBack }) {
               </div>
             </div>
 
-            {/* Controles de admin */}
+            {/* Controles removidos */}
             <div className="p-4 border-t border-gray-200 bg-white space-y-2">
-              {isCurrentUserAdmin() && (
-                <>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => setShowAddUserModal(true)}
-                  >
-                    <UserPlus size={16} className="mr-2" />
-                    Adicionar participante
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-red-600 hover:text-red-700"
-                    onClick={() => setShowRemoveUserModal(true)}
-                  >
-                    <UserMinus size={16} className="mr-2" />
-                    Remover participante
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      // Mostrar lista de participantes e permitir selecionar um para tornar admin
-                      const participantsList = participants.map(
-                        (p) => `${p.displayName || p.username} (${p.userId})`
-                      );
-                      const message = `Selecione um participante para tornar admin:\n${participantsList.join(
-                        "\n"
-                      )}\n\nDigite o ID do usuário (entre parênteses):`;
-                      const userId = prompt(message);
-                      if (userId) handleSetAdmin(userId);
-                    }}
-                  >
-                    <Crown size={16} className="mr-2" />
-                    Definir como admin
-                  </Button>
-                </>
-              )}
-
-              {/* Botões para todos os participantes */}
               <Button
                 variant="outline"
                 className="w-full justify-start"
@@ -863,46 +789,12 @@ export default function Chat({ chat, onBack }) {
                 <ArrowLeft size={16} className="mr-2" />
                 Sair do grupo
               </Button>
-
-              {/* Botão de excluir grupo (apenas para admin) */}
-              {isCurrentUserAdmin() && (
-                <Button
-                  variant="outline"
-                  className="w-full justify-start text-red-600 hover:text-red-700"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        "Tem certeza que deseja excluir este grupo? Esta ação não pode ser desfeita."
-                      )
-                    ) {
-                      handleLeaveGroup(true);
-                    }
-                  }}
-                >
-                  <AlertCircle size={16} className="mr-2" />
-                  Excluir grupo
-                </Button>
-              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Modais para gerenciamento de grupo */}
-      {chat.type === "group" && (
-        <>
-          <AddUserModal
-            isOpen={showAddUserModal}
-            onClose={() => setShowAddUserModal(false)}
-            groupId={chat.groupId}
-          />
-          <RemoveUserModal
-            isOpen={showRemoveUserModal}
-            onClose={() => setShowRemoveUserModal(false)}
-            groupId={chat.groupId}
-          />
-        </>
-      )}
+
     </div>
   );
 }

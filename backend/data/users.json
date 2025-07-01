@@ -1,42 +1,42 @@
 {
-  "9c379472-610c-4d26-a061-0081bfc05038" : {
-    "userId" : "9c379472-610c-4d26-a061-0081bfc05038",
+  "4895184e-2382-483b-ae86-cc7e54d60b9a" : {
+    "userId" : "4895184e-2382-483b-ae86-cc7e54d60b9a",
     "username" : "teste",
     "email" : "teste@email.com",
     "displayName" : "Usuário Teste",
-    "passwordHash" : "$2a$12$I7U0mlWqipRcMgDilrz.n.vJrzo03NW0n6bYOLDFmIvKUXHDherBO",
+    "passwordHash" : "$2a$12$IJ4YCjNmrn3r0azBl6bymuXcMZHZInDWx2z6vPpzwDaXjzaeUFtXK",
     "status" : "online",
-    "lastSeen" : 1751340018401,
+    "lastSeen" : 1751346334512,
     "active" : true
   },
-  "ee7840b2-5d3e-4ddb-a4c2-b55a3fd83b52" : {
-    "userId" : "ee7840b2-5d3e-4ddb-a4c2-b55a3fd83b52",
+  "dcae4328-50bf-4956-a1b0-705fbfb5e200" : {
+    "userId" : "dcae4328-50bf-4956-a1b0-705fbfb5e200",
     "username" : "Pedro",
-    "email" : "Pedro@email.com",
+    "email" : "pedro@email.com",
     "displayName" : "Pedro",
-    "passwordHash" : "$2a$12$jtrK.JVhmQF8AXTOWw/EDeqf2tmSCAPNgIeRRf4lTbwszrv3.keSa",
+    "passwordHash" : "$2a$12$AII1bW7mycMJORoGAAUNl.0erQT7tQlqIhDh5Fn9bWYgpaXy2I8se",
     "status" : "online",
-    "lastSeen" : 1751340033164,
+    "lastSeen" : 1751346349259,
     "active" : true
   },
-  "88379487-72c3-4ba8-8909-2258c01e561a" : {
-    "userId" : "88379487-72c3-4ba8-8909-2258c01e561a",
+  "1d3a44a6-7ce7-4b21-b0cc-20eecedff8ef" : {
+    "userId" : "1d3a44a6-7ce7-4b21-b0cc-20eecedff8ef",
     "username" : "Vitor",
-    "email" : "Vitor@email.com",
+    "email" : "vitor@email.com",
     "displayName" : "Vitor",
-    "passwordHash" : "$2a$12$8P3Zf1SbkDt7Lhd3COjiyu61SzHVjnzpUPZKrZJzbHtPPNQxDiB5i",
+    "passwordHash" : "$2a$12$tqdNtTAZ39pjjmfg7w0W4OrZkR5MlPALTb8N7f9zjK26h6BEov9IC",
     "status" : "online",
-    "lastSeen" : 1751340043213,
+    "lastSeen" : 1751346358728,
     "active" : true
   },
-  "568d24e6-997b-46d9-a8de-f0ab2c57f674" : {
-    "userId" : "568d24e6-997b-46d9-a8de-f0ab2c57f674",
-    "username" : "Pamela",
+  "e035b728-30a4-4b01-9334-2233731ff43f" : {
+    "userId" : "e035b728-30a4-4b01-9334-2233731ff43f",
+    "username" : "pamela",
     "email" : "pamela@email.com",
-    "displayName" : "Pamela",
-    "passwordHash" : "$2a$12$iizytNK9CLxnTPWkR9NB8uetPWSaGiFmbetHD8kTRxGgGJihRNGZG",
+    "displayName" : "pamela",
+    "passwordHash" : "$2a$12$r5tlD46JGaBulRFm.2sVfe4sZX/OA6tdAc1JRg97ZzrRifRFdOWhy",
     "status" : "online",
-    "lastSeen" : 1751340129009,
+    "lastSeen" : 1751346366296,
     "active" : true
   }
 }

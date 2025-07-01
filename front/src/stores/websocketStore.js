@@ -1405,7 +1405,59 @@ const useWebSocketStore = create((set, get) => ({
     }
   },
 
-  deleteGroup: async (groupId) => {
+  // Remover um usuário de um grupo (somente admins ou membros com permissão)
+    removeUserFromGroup: async (groupId, userId) => {
+      const { sessionId, cachedGroupMembers } = get();
+
+      // Validação básica
+      if (!sessionId) {
+        const errorMsg = "Sessão não encontrada";
+        console.error("removeUserFromGroup:", errorMsg);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
+      if (!groupId || !userId) {
+        const errorMsg = "Parâmetros inválidos";
+        console.error("removeUserFromGroup:", errorMsg, { groupId, userId });
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
+      try {
+        const response = await websocketClient.sendRequest("removeUserFromGroup", {
+          sessionId,
+          groupId,
+          userIdToRemove: userId,
+        });
+
+        // Caso o backend indique erro explícito
+        if (response && response.success === false) {
+          const errorMsg = response.error || "Erro ao remover usuário do grupo";
+          console.error("removeUserFromGroup:", errorMsg);
+          set({ fetchError: errorMsg });
+          throw new Error(errorMsg);
+        }
+
+        // Atualizar cache de membros do grupo, se existir
+        if (cachedGroupMembers[groupId]) {
+          set((state) => ({
+            cachedGroupMembers: {
+              ...state.cachedGroupMembers,
+              [groupId]: state.cachedGroupMembers[groupId].filter((m) => m.userId !== userId),
+            },
+          }));
+        }
+
+        return response;
+      } catch (error) {
+        console.error(`Erro ao remover usuário ${userId} do grupo ${groupId}:`, error);
+        set({ fetchError: `Erro ao remover usuário do grupo: ${error.message}` });
+        throw error;
+      }
+    },
+
+    deleteGroup: async (groupId) => {
     const { sessionId, cachedGroupMembers } = get();
 
     // Validação de parâmetros
