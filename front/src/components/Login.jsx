@@ -29,6 +29,7 @@ export default function Login({ onLogin }) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [showSuccessToast, setShowSuccessToast] = useState(false)
   
   // Usar o contexto WebSocket
   const { login, register, loginError, fetchError, isLoading: storeLoading } = useWebSocket()
@@ -48,6 +49,14 @@ export default function Login({ onLogin }) {
   useEffect(() => {
     setIsLoading(storeLoading);
   }, [storeLoading])
+
+  // Toast auto-dismiss
+  useEffect(() => {
+    if (showSuccessToast) {
+      const t = setTimeout(() => setShowSuccessToast(false), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [showSuccessToast])
 
   // Lidar com envio do formulário de login
   const handleLoginSubmit = async (e) => {
@@ -103,14 +112,13 @@ export default function Login({ onLogin }) {
         password: registerData.password
       })
       
-      // Após registro bem-sucedido, mostrar mensagem de sucesso e mudar para a aba de login
-      setSuccessMessage('Registro realizado com sucesso! Você já pode fazer login.')
+      // Após registro bem-sucedido, mostrar mensagem de sucesso na própria aba de cadastro
+      setSuccessMessage('Registro realizado com sucesso! Agora você pode entrar com suas credenciais.')
+      setShowSuccessToast(true)
       setError('') // Limpar qualquer erro anterior
-      setActiveTab('login')
-      setLoginData(prev => ({
-        ...prev,
-        email: registerData.email
-      }))
+      // Permanecer na aba de cadastro para exibir o alerta de sucesso.
+      // Se preferir voltar automaticamente para login, basta descomentar a linha abaixo.
+      // setActiveTab('login')
       setIsLoading(false)
     } catch (error) {
       setError(error.message || 'Erro ao registrar')
@@ -134,7 +142,14 @@ export default function Login({ onLogin }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <>
+      {showSuccessToast && (
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-3 rounded-md shadow-lg z-50 flex items-center">
+          <CheckCircle2 className="h-4 w-4 mr-2" />
+          <span>{successMessage}</span>
+        </div>
+      )}
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-lg p-8">
           <div className="text-center mb-6">
@@ -193,13 +208,7 @@ export default function Login({ onLogin }) {
                   </Alert>
                 )}
                 
-                {successMessage && activeTab === 'login' && (
-                  <Alert variant="default" className="border-green-500 bg-green-50 text-green-800">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <AlertTitle>Sucesso</AlertTitle>
-                    <AlertDescription>{successMessage}</AlertDescription>
-                  </Alert>
-                )}
+                
 
                 <Button
                   type="submit"
@@ -304,5 +313,6 @@ export default function Login({ onLogin }) {
         </div>
       </div>
     </div>
-  )
+  </>
+)
 }

@@ -60,8 +60,10 @@ public class UserDAO {
     }
     
     public User createUser(String username, String email, String displayName, String password) {
+        // Tornar comparação de email case-insensitive
+        String normalizedEmail = email.toLowerCase();
         // Verificar se o email já está em uso
-        if (emailToUserId.containsKey(email)) {
+        if (emailToUserId.containsKey(normalizedEmail)) {
             throw new IllegalArgumentException("Email já está em uso");
         }
         
@@ -71,14 +73,14 @@ public class UserDAO {
         User user = new User();
         user.setUserId(userId);
         user.setUsername(username);
-        user.setEmail(email);
+        user.setEmail(normalizedEmail);
         user.setDisplayName(displayName);
         user.setPasswordHash(passwordHash);
         user.setStatus("online");
         user.setActive(true);
         
         users.put(userId, user);
-        emailToUserId.put(email, userId);
+        emailToUserId.put(normalizedEmail, userId);
         
         // Persistir dados
         saveData();
@@ -91,10 +93,22 @@ public class UserDAO {
     }
     
     public User getUserByEmail(String email) {
-        String userId = emailToUserId.get(email);
+        if (email == null) return null;
+        String userId = emailToUserId.get(email.toLowerCase());
         return userId != null ? users.get(userId) : null;
     }
     
+    public User getUserByUsernameIgnoreCase(String username) {
+        if (username == null) return null;
+        String lower = username.toLowerCase();
+        for (User u : users.values()) {
+            if (u.getUsername() != null && u.getUsername().toLowerCase().equals(lower)) {
+                return u;
+            }
+        }
+        return null;
+    }
+
     public List<User> getAllUsers() {
         return new ArrayList<>(users.values());
     }

@@ -124,32 +124,34 @@ const useWebSocketStore = create((set, get) => ({
   },
 
   register: async (userData) => {
-    set({ isLoading: true });
+    set({ isLoading: true, fetchError: null, loginError: null });
 
     try {
-      if (
-        !userData ||
-        !userData.email ||
-        !userData.password ||
-        !userData.username
-      ) {
+      if (!userData || !userData.email || !userData.password || !userData.username) {
         throw new Error("Dados de registro incompletos");
       }
 
       const response = await websocketClient.sendRequest("register", userData);
 
-      // Validar formato da resposta
-      if (!response || !response.success) {
-        throw new Error(response?.error || "Erro ao registrar usuário");
+      // O backend pode retornar diferentes formatos. Se houver a chave "error", tratar como falha.
+      if (response && response.error) {
+        throw new Error(response.error);
+      }
+      // Caso a chave "success" exista e seja falsa, também é considerado erro.
+      if (typeof response?.success !== "undefined" && response.success === false) {
+        throw new Error(response?.message || "Erro ao registrar usuário");
       }
 
-      set({ isLoading: false });
+      // Sucesso: limpar estados de erro
+      set({ isLoading: false, fetchError: null });
+
       return response;
     } catch (error) {
-      set({ isLoading: false });
+      set({ isLoading: false, fetchError: error.message }); // <-- manter o erro aqui
       throw error;
     }
   },
+
 
   logout: async () => {
     set({ isLoading: true });
@@ -1352,6 +1354,65 @@ const useWebSocketStore = create((set, get) => ({
     }
   },
   
+  leaveGroup: async (groupId) => {
+    const { sessionId } = get();
+
+    // Validações básicas
+    if (!sessionId) {
+      const errorMsg = "Sessão não encontrada";
+      console.error("leaveGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+    if (!groupId) {
+      const errorMsg = "ID do grupo não fornecido";
+      console.error("leaveGroup:", errorMsg);
+      set({ fetchError: errorMsg });
+      throw new Error(errorMsg);
+    }
+
+    try {
+      const response = await websocketClient.sendRequest("leaveGroup", {
+        sessionId,
+        groupId,
+      });
+
+      // Caso o backend retorne erro explícito
+      if (response && response.error) {
+        const errorMsg = response.error;
+        console.error("leaveGroup:", errorMsg);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+      // Caso exista success === false
+      if (typeof response?.success !== "undefined" && response.success === false) {
+        const errorMsg = response?.message || "Erro ao sair do grupo";
+        console.error("leaveGroup:", errorMsg);
+        set({ fetchError: errorMsg });
+        throw new Error(errorMsg);
+      }
+
+      // Remover grupo localmente
+      set((state) => ({
+        groups: state.groups.filter((g) => g.groupId !== groupId),
+        cachedGroupMembers: {
+          ...state.cachedGroupMembers,
+          [groupId]: [],
+        },
+        groupMessages: {
+          ...state.groupMessages,
+          [groupId]: [],
+        },
+      }));
+
+      return response;
+    } catch (error) {
+      console.error(`Erro ao sair do grupo ${groupId}:`, error);
+      set({ fetchError: `Erro ao sair do grupo: ${error.message}` });
+      throw error;
+    }
+  },
+
   deleteGroup: async (groupId) => {
     const { sessionId, cachedGroupMembers } = get();
 
@@ -1630,7 +1691,7 @@ const useWebSocketStore = create((set, get) => ({
           get().clearGroupMembersCache(data.groupId);
         }
         break;
-        
+      
       case "joinGroupRequest":
         // Processar solicitação de entrada em grupo
         console.log("[WebSocketStore] Recebida solicitação de entrada em grupo:", data);

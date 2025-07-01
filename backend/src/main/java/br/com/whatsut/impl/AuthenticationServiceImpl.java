@@ -22,8 +22,13 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         Map<String, Object> result = new HashMap<>();
         
         try {
+            // Tentar localizar por email primeiro (insensível a maiúsculas/minúsculas)
             User user = userDAO.getUserByEmail(email);
-            
+            // Se não encontrado por email, tentar por username (case-insensitive)
+            if (user == null) {
+                user = userDAO.getUserByUsernameIgnoreCase(email);
+            }
+
             if (user == null) {
                 result.put("success", false);
                 result.put("error", "Usuário não encontrado");
