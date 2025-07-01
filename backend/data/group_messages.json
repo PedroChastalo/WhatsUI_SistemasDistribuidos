@@ -1,104 +1,42 @@
 {
-  "4df745c1-5a41-42e0-ab23-8a8368b2f359" : [ {
-    "messageId" : "b4ae1721-74c4-45c6-8c59-12a6d28475ee",
+  "a1329f94-a87a-4865-ab77-9b08e05edb95" : [ {
+    "messageId" : "b2fcf878-8a9d-49c2-8eb4-e668e8b54de4",
     "senderId" : "system",
     "senderName" : "Sistema",
-    "receiverId" : "4df745c1-5a41-42e0-ab23-8a8368b2f359",
-    "content" : "Pamela criou o grupo",
-    "timestamp" : 1751340153434,
-    "fileUrl" : null,
-    "fileType" : null,
-    "groupMessage" : true
-  }, {
-    "messageId" : "8a391a64-c046-4b9b-ad83-2177f72c1356",
-    "senderId" : "system",
-    "senderName" : "Sistema",
-    "receiverId" : "4df745c1-5a41-42e0-ab23-8a8368b2f359",
-    "content" : "Vitor foi adicionado ao grupo",
-    "timestamp" : 1751342593785,
+    "receiverId" : "a1329f94-a87a-4865-ab77-9b08e05edb95",
+    "content" : "Pedro criou o grupo",
+    "timestamp" : 1751346384124,
     "fileUrl" : null,
     "fileType" : null,
     "groupMessage" : true
   } ],
-  "f9cce055-6f66-497e-ba8f-b7ccd0b06b68" : [ {
-    "messageId" : "fadebfce-1db4-4b89-88b2-bda11abfb065",
+  "c40513ae-f7ba-4288-91e3-e7d0590d469d" : [ {
+    "messageId" : "be2e43d2-f424-409c-b72b-c0c390d4bdb2",
     "senderId" : "system",
     "senderName" : "Sistema",
-    "receiverId" : "f9cce055-6f66-497e-ba8f-b7ccd0b06b68",
+    "receiverId" : "c40513ae-f7ba-4288-91e3-e7d0590d469d",
     "content" : "Pedro criou o grupo",
-    "timestamp" : 1751340062612,
+    "timestamp" : 1751346420189,
     "fileUrl" : null,
     "fileType" : null,
     "groupMessage" : true
   }, {
-    "messageId" : "40527876-c66a-45f6-a7ac-7c1d97d6da2b",
+    "messageId" : "41f494eb-f42b-4b79-b735-424bc49047f1",
     "senderId" : "system",
     "senderName" : "Sistema",
-    "receiverId" : "f9cce055-6f66-497e-ba8f-b7ccd0b06b68",
-    "content" : "Vitor foi adicionado ao grupo",
-    "timestamp" : 1751340088603,
+    "receiverId" : "c40513ae-f7ba-4288-91e3-e7d0590d469d",
+    "content" : "Vitor foi removido do grupo",
+    "timestamp" : 1751347213581,
     "fileUrl" : null,
     "fileType" : null,
     "groupMessage" : true
   }, {
-    "messageId" : "43f0ed66-7746-4e2d-b4ef-8f10350953b8",
+    "messageId" : "8eef1645-55a7-4958-9971-2aadc0f19b76",
     "senderId" : "system",
     "senderName" : "Sistema",
-    "receiverId" : "f9cce055-6f66-497e-ba8f-b7ccd0b06b68",
-    "content" : "Pamela foi adicionado ao grupo",
-    "timestamp" : 1751343007019,
-    "fileUrl" : null,
-    "fileType" : null,
-    "groupMessage" : true
-  } ],
-  "74fc60b1-922e-4295-a9d8-85b47207bf31" : [ {
-    "messageId" : "14a851a5-c785-4c57-8279-59aefbdc99da",
-    "senderId" : "system",
-    "senderName" : "Sistema",
-    "receiverId" : "74fc60b1-922e-4295-a9d8-85b47207bf31",
-    "content" : "Pedro criou o grupo",
-    "timestamp" : 1751341144457,
-    "fileUrl" : null,
-    "fileType" : null,
-    "groupMessage" : true
-  }, {
-    "messageId" : "b86feaeb-6212-4225-b2cb-3286a90d9494",
-    "senderId" : "system",
-    "senderName" : "Sistema",
-    "receiverId" : "74fc60b1-922e-4295-a9d8-85b47207bf31",
-    "content" : "Vitor foi adicionado ao grupo",
-    "timestamp" : 1751341553796,
-    "fileUrl" : null,
-    "fileType" : null,
-    "groupMessage" : true
-  } ],
-  "55d9a7b6-473e-4224-b8e9-558aab4b043c" : [ {
-    "messageId" : "531cbb5a-4502-462c-bcb1-b600ae1e5781",
-    "senderId" : "system",
-    "senderName" : "Sistema",
-    "receiverId" : "55d9a7b6-473e-4224-b8e9-558aab4b043c",
-    "content" : "Pedro criou o grupo",
-    "timestamp" : 1751341998111,
-    "fileUrl" : null,
-    "fileType" : null,
-    "groupMessage" : true
-  }, {
-    "messageId" : "124700ab-02f7-48a2-984d-be85c9593054",
-    "senderId" : "system",
-    "senderName" : "Sistema",
-    "receiverId" : "55d9a7b6-473e-4224-b8e9-558aab4b043c",
-    "content" : "Vitor foi adicionado ao grupo",
-    "timestamp" : 1751342034158,
-    "fileUrl" : null,
-    "fileType" : null,
-    "groupMessage" : true
-  }, {
-    "messageId" : "5ec89fce-6fb7-486c-8b5b-c71138fbe68d",
-    "senderId" : "system",
-    "senderName" : "Sistema",
-    "receiverId" : "55d9a7b6-473e-4224-b8e9-558aab4b043c",
-    "content" : "Pamela foi adicionado ao grupo",
-    "timestamp" : 1751342088205,
+    "receiverId" : "c40513ae-f7ba-4288-91e3-e7d0590d469d",
+    "content" : "pamela foi removido do grupo",
+    "timestamp" : 1751347216133,
     "fileUrl" : null,
     "fileType" : null,
     "groupMessage" : true

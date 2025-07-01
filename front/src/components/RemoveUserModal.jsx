@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, UserMinus } from 'lucide-react';
+import { X, Search, UserMinus, Crown } from 'lucide-react';
 import { useWebSocket } from '../contexts/WebSocketContext';
 
 // Componentes UI
@@ -23,6 +23,8 @@ const Button = ({ children, variant = 'default', className = '', ...props }) => 
 };
 
 const RemoveUserModal = ({ isOpen, onClose, groupId }) => {
+  // Flag se usuário atual é admin
+  const [currentIsAdmin, setCurrentIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [participants, setParticipants] = useState([]);
   const [filteredParticipants, setFilteredParticipants] = useState([]);
@@ -40,10 +42,11 @@ const RemoveUserModal = ({ isOpen, onClose, groupId }) => {
         try {
           const members = await getGroupMembers(groupId);
           if (members) {
-            // Filtrar o usuário atual da lista (não pode se remover)
-            const filteredMembers = members.filter(member => member.userId !== currentUser?.userId);
-            setParticipants(filteredMembers);
-            setFilteredParticipants(filteredMembers);
+                        setParticipants(members);
+                        setFilteredParticipants(members);
+            // Atualizar flag de admin atual
+            const isAdminFlag = members.some(m => m.userId === currentUser?.userId && m.isAdmin);
+            setCurrentIsAdmin(isAdminFlag);
           }
         } catch (error) {
           console.error("Erro ao carregar participantes:", error);
@@ -150,25 +153,25 @@ const RemoveUserModal = ({ isOpen, onClose, groupId }) => {
                     <div>
                       <p className="font-medium text-gray-900">{user.displayName || user.username}</p>
                       <p className="text-sm text-gray-500">@{user.username}</p>
-                      {user.role === 'admin' && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                          Admin
-                        </span>
+                      {user.isAdmin && (
+                        <Crown size={16} className="text-yellow-500 ml-1" title="Admin" />
                       )}
                     </div>
                   </div>
-                  <Button 
-                    variant="ghost"
-                    className="p-2 text-red-500 hover:text-red-700"
-                    onClick={() => handleRemoveUser(user.userId)}
-                    disabled={isRemoving}
-                  >
+                  {currentIsAdmin && user.userId !== currentUser?.userId && (
+                    <Button 
+                      variant="ghost"
+                      className="p-2 text-red-500 hover:text-red-700"
+                      onClick={() => handleRemoveUser(user.userId)}
+                      disabled={isRemoving}
+                    >
                     {isRemoving ? (
                       <div className="animate-spin h-4 w-4 border-2 border-red-500 rounded-full border-t-transparent"></div>
                     ) : (
                       <UserMinus size={18} />
                     )}
-                  </Button>
+                    </Button>
+                  )}
                 </div>
               ))
             ) : (
