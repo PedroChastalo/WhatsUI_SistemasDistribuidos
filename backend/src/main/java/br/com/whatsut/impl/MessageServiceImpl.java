@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
  * Implementação do serviço de mensagens
  */
 public class MessageServiceImpl implements MessageService {
+    // DAOs para acesso aos dados de mensagens e usuários
     private final MessageDAO messageDAO;
     private final UserDAO userDAO;
     
@@ -24,6 +25,11 @@ public class MessageServiceImpl implements MessageService {
         this.userDAO = new UserDAO();
     }
     
+    /**
+     * Obtém as conversas privadas do usuário logado
+     * @param sessionId ID da sessão
+     * @return Lista de conversas privadas
+     */
     @Override
     public List<Map<String, Object>> getPrivateConversations(String sessionId) throws RemoteException {
         // Validar sessão
@@ -71,6 +77,12 @@ public class MessageServiceImpl implements MessageService {
         return conversations;
     }
     
+    /**
+     * Obtém as mensagens privadas entre o usuário logado e outro usuário
+     * @param sessionId ID da sessão
+     * @param otherUserId ID do outro usuário
+     * @return Lista de mensagens
+     */
     @Override
     public List<Map<String, Object>> getPrivateMessages(String sessionId, String otherUserId) throws RemoteException {
         // Validar sessão
@@ -92,6 +104,13 @@ public class MessageServiceImpl implements MessageService {
         return messages.stream().map(this::messageToMap).collect(Collectors.toList());
     }
     
+    /**
+     * Envia uma mensagem privada
+     * @param sessionId ID da sessão
+     * @param receiverId ID do destinatário
+     * @param content Conteúdo da mensagem
+     * @return Mapa representando a mensagem enviada
+     */
     @Override
     public Map<String, Object> sendPrivateMessage(String sessionId, String receiverId, String content) throws RemoteException {
         // Validar sessão
@@ -150,6 +169,15 @@ public class MessageServiceImpl implements MessageService {
         return map;
     }
 
+    /**
+     * Envia um arquivo em mensagem privada
+     * @param sessionId ID da sessão
+     * @param receiverId ID do destinatário
+     * @param fileName Nome do arquivo
+     * @param fileType Tipo do arquivo
+     * @param fileData Dados do arquivo
+     * @return Mapa representando a mensagem enviada
+     */
     @Override
     public Map<String, Object> sendPrivateFile(String sessionId, String receiverId,
                                                String fileName, String fileType, byte[] fileData) throws RemoteException {

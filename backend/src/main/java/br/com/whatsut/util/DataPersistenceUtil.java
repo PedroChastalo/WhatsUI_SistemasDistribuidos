@@ -17,10 +17,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * Utilitário para persistência de dados em arquivos JSON
  */
 public class DataPersistenceUtil {
+    // Instância do ObjectMapper para serialização/deserialização
     private static final ObjectMapper objectMapper = new ObjectMapper()
             .enable(SerializationFeature.INDENT_OUTPUT);
+    // Diretório padrão para armazenamento dos arquivos de dados
     private static final String DATA_DIR = "data";
     
+    // Bloco estático para garantir que o diretório de dados exista
     static {
         // Criar diretório de dados se não existir
         try {

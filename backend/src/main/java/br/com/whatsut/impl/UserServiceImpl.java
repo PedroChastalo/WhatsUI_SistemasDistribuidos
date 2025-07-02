@@ -13,12 +13,18 @@ import java.util.stream.Collectors;
  * Implementação do serviço de usuários
  */
 public class UserServiceImpl implements UserService {
+    // DAO para acesso aos dados de usuários
     private final UserDAO userDAO;
     
     public UserServiceImpl() {
         this.userDAO = new UserDAO();
     }
     
+    /**
+     * Obtém todos os usuários, exceto o próprio usuário da sessão
+     * @param sessionId ID da sessão
+     * @return Lista de usuários
+     */
     @Override
     public List<User> getAllUsers(String sessionId) throws RemoteException {
         // Validar sessão
@@ -33,6 +39,12 @@ public class UserServiceImpl implements UserService {
                 .collect(Collectors.toList());
     }
     
+    /**
+     * Obtém um usuário pelo ID
+     * @param sessionId ID da sessão
+     * @param targetUserId ID do usuário alvo
+     * @return Usuário encontrado
+     */
     @Override
     public User getUserById(String sessionId, String targetUserId) throws RemoteException {
         // Validar sessão
@@ -44,6 +56,12 @@ public class UserServiceImpl implements UserService {
         return userDAO.getUserById(targetUserId);
     }
     
+    /**
+     * Atualiza o status do usuário logado
+     * @param sessionId ID da sessão
+     * @param status Novo status
+     * @return true se atualizado com sucesso
+     */
     @Override
     public boolean updateStatus(String sessionId, String status) throws RemoteException {
         // Validar sessão

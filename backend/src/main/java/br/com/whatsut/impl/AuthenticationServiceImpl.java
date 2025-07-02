@@ -10,13 +10,23 @@ import java.rmi.RemoteException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Implementação do serviço de autenticação
+ */
 public class AuthenticationServiceImpl implements AuthenticationService {
+    // DAO para acesso aos dados de usuários
     private final UserDAO userDAO = new UserDAO();
     
     public AuthenticationServiceImpl() throws RemoteException {
         super();
     }
     
+    /**
+     * Realiza o login do usuário
+     * @param email Email ou username do usuário
+     * @param password Senha do usuário
+     * @return Mapa com resultado do login
+     */
     @Override
     public Map<String, Object> login(String email, String password) throws RemoteException {
         Map<String, Object> result = new HashMap<>();
@@ -35,12 +45,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 return result;
             }
             
+            // Verifica a senha
             if (!PasswordEncryptor.checkPassword(password, user.getPasswordHash())) {
                 result.put("success", false);
                 result.put("error", "Senha incorreta");
                 return result;
             }
             
+            // Cria sessão
             String sessionId = SessionManager.createSession(user.getUserId());
             
             Map<String, Object> userData = new HashMap<>();
@@ -61,11 +73,20 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
     
+    /**
+     * Realiza o registro de um novo usuário
+     * @param username Nome de usuário
+     * @param email Email do usuário
+     * @param displayName Nome de exibição
+     * @param password Senha
+     * @return Mapa com resultado do registro
+     */
     @Override
     public Map<String, Object> register(String username, String email, String displayName, String password) throws RemoteException {
         Map<String, Object> result = new HashMap<>();
         
         try {
+            // Verifica se já existe usuário com o email informado
             User existingUser = userDAO.getUserByEmail(email);
             if (existingUser != null) {
                 result.put("success", false);
@@ -73,6 +94,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 return result;
             }
             
+            // Cria novo usuário
             User newUser = userDAO.createUser(username, email, displayName, password);
             String sessionId = SessionManager.createSession(newUser.getUserId());
             
@@ -94,6 +116,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
     
+    /**
+     * Realiza o logout do usuário
+     * @param sessionId ID da sessão
+     * @return true se logout realizado com sucesso
+     */
     @Override
     public boolean logout(String sessionId) throws RemoteException {
         try {
@@ -104,6 +131,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         }
     }
     
+    /**
+     * Valida se a sessão é válida
+     * @param sessionId ID da sessão
+     * @return true se a sessão for válida
+     */
     @Override
     public boolean validateSession(String sessionId) throws RemoteException {
         return SessionManager.isValidSession(sessionId);

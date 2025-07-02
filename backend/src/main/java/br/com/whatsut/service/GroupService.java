@@ -49,6 +49,13 @@ public interface GroupService extends Remote {
     
     /**
      * Envia um arquivo para o grupo (dados em base64).
+     * @param sessionId ID da sessão do usuário autenticado
+     * @param groupId ID do grupo
+     * @param fileName Nome do arquivo
+     * @param fileType Tipo do arquivo
+     * @param fileData Dados do arquivo
+     * @return Dados da mensagem enviada
+     * @throws RemoteException Erro RMI
      */
     Map<String, Object> sendGroupFile(String sessionId, String groupId, String fileName, String fileType, byte[] fileData) throws RemoteException;
     

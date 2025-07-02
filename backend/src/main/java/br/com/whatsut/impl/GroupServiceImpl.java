@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
  * Implementação do serviço de grupos
  */
 public class GroupServiceImpl implements GroupService {
+    // DAOs para acesso aos dados de grupos, usuários e mensagens
     private final GroupDAO groupDAO;
     private final UserDAO userDAO;
     private final MessageDAO messageDAO;
@@ -27,6 +28,11 @@ public class GroupServiceImpl implements GroupService {
         this.messageDAO = new MessageDAO();
     }
     
+    /**
+     * Obtém os grupos do usuário logado
+     * @param sessionId ID da sessão
+     * @return Lista de grupos
+     */
     @Override
     public List<Map<String, Object>> getGroups(String sessionId) throws RemoteException {
         // Validar sessão
@@ -42,6 +48,13 @@ public class GroupServiceImpl implements GroupService {
         return userGroups.stream().map(this::groupToMap).collect(Collectors.toList());
     }
     
+    /**
+     * Cria um novo grupo
+     * @param sessionId ID da sessão
+     * @param name Nome do grupo
+     * @param members Lista de membros
+     * @return Grupo criado como Map
+     */
     @Override
     public Map<String, Object> createGroup(String sessionId, String name, List<String> members) throws RemoteException {
         // Validar sessão
@@ -87,6 +100,12 @@ public class GroupServiceImpl implements GroupService {
         return groupToMap(group);
     }
     
+    /**
+     * Obtém as mensagens de um grupo
+     * @param sessionId ID da sessão
+     * @param groupId ID do grupo
+     * @return Lista de mensagens
+     */
     @Override
     public List<Map<String, Object>> getGroupMessages(String sessionId, String groupId) throws RemoteException {
         // Validar sessão
@@ -113,6 +132,13 @@ public class GroupServiceImpl implements GroupService {
         return messages.stream().map(this::messageToMap).collect(Collectors.toList());
     }
     
+    /**
+     * Envia uma mensagem para o grupo
+     * @param sessionId ID da sessão
+     * @param groupId ID do grupo
+     * @param content Conteúdo da mensagem
+     * @return Mapa representando a mensagem enviada
+     */
     @Override
     public Map<String, Object> sendGroupMessage(String sessionId, String groupId, String content) throws RemoteException {
         // Validar sessão
@@ -154,6 +180,15 @@ public class GroupServiceImpl implements GroupService {
         return messageToMap(message);
     }
     
+    /**
+     * Envia um arquivo para o grupo
+     * @param sessionId ID da sessão
+     * @param groupId ID do grupo
+     * @param fileName Nome do arquivo
+     * @param fileType Tipo do arquivo
+     * @param fileData Dados do arquivo
+     * @return Mapa representando a mensagem enviada
+     */
     @Override
     public Map<String, Object> sendGroupFile(String sessionId, String groupId,
                                              String fileName, String fileType, byte[] fileData) throws RemoteException {
@@ -198,6 +233,12 @@ public class GroupServiceImpl implements GroupService {
     
     }
     
+    /**
+     * Obtém os membros de um grupo
+     * @param sessionId ID da sessão
+     * @param groupId ID do grupo
+     * @return Lista de membros como Map
+     */
     @Override
     public List<Map<String, Object>> getGroupMembers(String sessionId, String groupId) throws RemoteException {
         // Validar sessão
@@ -237,6 +278,12 @@ public class GroupServiceImpl implements GroupService {
         return members;
     }
 
+    /**
+     * Adiciona um usuário ao grupo
+     * @param sessionId ID da sessão
+     * @param groupId ID do grupo
+     * @param userIdToAdd ID do usuário a ser adicionado
+     */
     @Override
     public void addUserToGroup(String sessionId, String groupId, String userIdToAdd) throws RemoteException {
         // Validar sessão
@@ -285,6 +332,12 @@ public class GroupServiceImpl implements GroupService {
         groupDAO.updateLastMessage(groupId, systemMessage.getContent());
     }
 
+    /**
+     * Remove um usuário do grupo
+     * @param sessionId ID da sessão
+     * @param groupId ID do grupo
+     * @param userIdToRemove ID do usuário a ser removido
+     */
     @Override
     public void removeUserFromGroup(String sessionId, String groupId, String userIdToRemove) throws RemoteException {
         String requesterId = SessionManager.getUserIdFromSession(sessionId);
@@ -332,6 +385,12 @@ public class GroupServiceImpl implements GroupService {
         }
     }
 
+    /**
+     * Define um novo administrador para o grupo
+     * @param sessionId ID da sessão
+     * @param groupId ID do grupo
+     * @param userIdToSetAdmin ID do novo admin
+     */
     @Override
     public void setGroupAdmin(String sessionId, String groupId, String userIdToSetAdmin) throws RemoteException {
         String requesterId = SessionManager.getUserIdFromSession(sessionId);
@@ -372,6 +431,11 @@ public class GroupServiceImpl implements GroupService {
         }
     }
 
+    /**
+     * Permite que o usuário saia do grupo
+     * @param sessionId ID da sessão
+     * @param groupId ID do grupo
+     */
     @Override
     public void leaveGroup(String sessionId, String groupId) throws RemoteException {
         String userId = SessionManager.getUserIdFromSession(sessionId);
@@ -421,6 +485,11 @@ public class GroupServiceImpl implements GroupService {
         }
     }
 
+    /**
+     * Exclui um grupo (apenas admin pode excluir)
+     * @param sessionId ID da sessão
+     * @param groupId ID do grupo
+     */
     @Override
     public void deleteGroup(String sessionId, String groupId) throws RemoteException {
         String userId = SessionManager.getUserIdFromSession(sessionId);
@@ -484,6 +553,11 @@ public class GroupServiceImpl implements GroupService {
         return map;
     }
     
+    /**
+     * Obtém todos os grupos disponíveis para o usuário (que ele ainda não participa)
+     * @param sessionId ID da sessão
+     * @return Lista de grupos disponíveis
+     */
     @Override
     public List<Map<String, Object>> getAllAvailableGroups(String sessionId) throws RemoteException {
         // Validar sessão

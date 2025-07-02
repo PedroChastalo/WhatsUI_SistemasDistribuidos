@@ -12,14 +12,23 @@ import br.com.whatsut.model.User;
 import br.com.whatsut.service.UserService;
 
 /**
- * Handles user-related requests (getUsers, getUser, updateStatus).
+ * Processa requisições relacionadas a usuários (getUsers, getUser, updateStatus).
  */
 public class UserHandler implements RequestHandler {
 
+    // Mapa de sessões WebSocket -> sessionId
     private final ConcurrentMap<WebSocket, String> sessions;
+    // Serviço de usuários
     private final UserService userService;
+    // Função para verificar se um usuário está online
     private final Function<String, Boolean> isUserOnline;
 
+    /**
+     * Construtor do handler de usuários
+     * @param sessions Mapa de sessões WebSocket
+     * @param userService Serviço de usuários
+     * @param isUserOnline Função para verificar se usuário está online
+     */
     public UserHandler(ConcurrentMap<WebSocket, String> sessions, UserService userService,
                        Function<String, Boolean> isUserOnline) {
         this.sessions = sessions;
@@ -27,6 +36,9 @@ public class UserHandler implements RequestHandler {
         this.isUserOnline = isUserOnline;
     }
 
+    /**
+     * Processa o tipo de requisição de usuário recebido
+     */
     @Override
     public void handle(String type, WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         switch (type) {
@@ -45,6 +57,9 @@ public class UserHandler implements RequestHandler {
         }
     }
 
+    /**
+     * Obtém todos os usuários (exceto o próprio) e status online
+     */
     private void handleGetUsers(WebSocket conn, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -65,6 +80,9 @@ public class UserHandler implements RequestHandler {
         response.put("data", usersWithStatus);
     }
 
+    /**
+     * Obtém um usuário pelo ID
+     */
     private void handleGetUser(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -88,6 +106,9 @@ public class UserHandler implements RequestHandler {
         response.put("data", user);
     }
 
+    /**
+     * Atualiza o status do usuário logado
+     */
     private void handleUpdateStatus(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {

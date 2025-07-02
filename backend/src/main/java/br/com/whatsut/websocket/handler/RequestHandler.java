@@ -4,17 +4,18 @@ import java.util.Map;
 import org.java_websocket.WebSocket;
 
 /**
- * Generic handler for a WebSocket request type.
+ * Interface genérica para handlers de requisições WebSocket.
+ * Cada implementação trata um tipo de requisição (ex: login, mensagens, grupos).
  */
 public interface RequestHandler {
     /**
-     * Handle a request of a given type.
+     * Processa uma requisição de determinado tipo.
      *
-     * @param type     the request type string (e.g. "login")
-     * @param conn     the client connection
-     * @param data     the data map received from the client (may be null)
-     * @param response response map to be filled and returned to the client
-     * @throws Exception in case of any processing error
+     * @param type     tipo da requisição (ex: "login", "getUsers")
+     * @param conn     conexão WebSocket do cliente
+     * @param data     dados recebidos do cliente (pode ser null)
+     * @param response mapa de resposta a ser preenchido e enviado ao cliente
+     * @throws Exception em caso de erro no processamento
      */
     void handle(String type, WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception;
 }

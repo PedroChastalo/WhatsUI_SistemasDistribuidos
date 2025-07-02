@@ -45,6 +45,7 @@ public interface MessageService extends Remote {
      * @param fileType content-type MIME
      * @param fileData bytes do arquivo
      * @return dados da mensagem enviada
+     * @throws RemoteException Erro RMI
      */
     Map<String, Object> sendPrivateFile(String sessionId, String receiverId, String fileName, String fileType, byte[] fileData) throws RemoteException;
 }

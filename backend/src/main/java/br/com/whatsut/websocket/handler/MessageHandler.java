@@ -9,18 +9,28 @@ import org.java_websocket.WebSocket;
 import br.com.whatsut.service.MessageService;
 
 /**
- * Handles private message related requests.
+ * Processa solicitações relacionadas a mensagens privadas.
  */
 public class MessageHandler implements RequestHandler {
 
+    // Mapa de sessões WebSocket -> sessionId
     private final ConcurrentMap<WebSocket, String> sessions;
+    // Serviço de mensagens privadas
     private final MessageService messageService;
 
+    /**
+     * Construtor do handler de mensagens privadas
+     * @param sessions Mapa de sessões WebSocket
+     * @param messageService Serviço de mensagens privadas
+     */
     public MessageHandler(ConcurrentMap<WebSocket, String> sessions, MessageService messageService) {
         this.sessions = sessions;
         this.messageService = messageService;
     }
 
+    /**
+     * Processa o tipo de requisição de mensagem recebido
+     */
     @Override
     public void handle(String type, WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         switch (type) {
@@ -43,6 +53,9 @@ public class MessageHandler implements RequestHandler {
         }
     }
 
+    /**
+     * Obtém as conversas privadas do usuário logado
+     */
     private void handleGetPrivateConversations(WebSocket conn, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -55,6 +68,9 @@ public class MessageHandler implements RequestHandler {
         response.put("data", conversations);
     }
 
+    /**
+     * Obtém as mensagens privadas entre o usuário logado e outro usuário
+     */
     private void handleGetPrivateMessages(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -73,6 +89,9 @@ public class MessageHandler implements RequestHandler {
         response.put("data", messages);
     }
 
+    /**
+     * Envia uma mensagem privada
+     */
     private void handleSendPrivateMessage(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -127,27 +146,4 @@ public class MessageHandler implements RequestHandler {
             throw e;
         }
     }
-
-    // Envio de arquivo privado ainda não suportado nesta versão
-    /*
-    private void handleSendPrivateFile(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
-        String sessionId = sessions.get(conn);
-        if (sessionId == null) {
-            response.put("success", false);
-            response.put("error", "Usuário não autenticado");
-            return;
-        }
-        String receiverId = (String) data.getOrDefault("userId", data.get("receiverId"));
-        String fileName = (String) data.get("fileName");
-        String fileContentBase64 = (String) data.get("fileContent");
-        if (receiverId == null || fileName == null || fileContentBase64 == null) {
-            response.put("success", false);
-            response.put("error", "Dados do arquivo incompletos");
-            return;
-        }
-        // Map<String, Object> result = messageService.sendPrivateFile(sessionId, receiverId, fileName, fileContentBase64);
-        Map<String, Object> result = Map.of();
-        response.put("success", true);
-        response.put("data", result);
-    }
-*/}
+}

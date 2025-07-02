@@ -12,6 +12,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * DAO para gerenciar usuários
+ */
 public class UserDAO {
     private static final String USERS_FILE = "users";
     private static final String EMAIL_MAP_FILE = "email_map";
@@ -60,9 +63,9 @@ public class UserDAO {
     }
     
     public User createUser(String username, String email, String displayName, String password) {
-        // Tornar comparação de email case-insensitive
+     
         String normalizedEmail = email.toLowerCase();
-        // Verificar se o email já está em uso
+       
         if (emailToUserId.containsKey(normalizedEmail)) {
             throw new IllegalArgumentException("Email já está em uso");
         }
@@ -82,7 +85,7 @@ public class UserDAO {
         users.put(userId, user);
         emailToUserId.put(normalizedEmail, userId);
         
-        // Persistir dados
+       
         saveData();
         
         return user;
@@ -117,7 +120,7 @@ public class UserDAO {
         User user = users.get(userId);
         if (user != null) {
             user.setStatus(status);
-            // Persistir alteração
+           
             saveData();
             return true;
         }

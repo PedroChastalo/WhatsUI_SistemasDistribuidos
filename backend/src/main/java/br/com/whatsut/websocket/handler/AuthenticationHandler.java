@@ -2,24 +2,33 @@ package br.com.whatsut.websocket.handler;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
-
 import org.java_websocket.WebSocket;
-
 import br.com.whatsut.service.AuthenticationService;
 
+
 /**
- * Handles authentication related requests: login, register, logout.
+ * Processa solicitações de autenticação: login, cadastro e logout.
  */
 public class AuthenticationHandler implements RequestHandler {
 
+    // Mapa de sessões WebSocket -> sessionId
     private final ConcurrentMap<WebSocket, String> sessions;
+    // Serviço de autenticação
     private final AuthenticationService authService;
-
+    
+    /**
+     * Construtor do handler de autenticação
+     * @param sessions Mapa de sessões WebSocket
+     * @param authService Serviço de autenticação
+     */
     public AuthenticationHandler(ConcurrentMap<WebSocket, String> sessions, AuthenticationService authService) {
         this.sessions = sessions;
         this.authService = authService;
     }
 
+    /**
+     * Processa o tipo de requisição de autenticação recebido
+     */
     @Override
     public void handle(String type, WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         switch (type) {
@@ -38,6 +47,9 @@ public class AuthenticationHandler implements RequestHandler {
         }
     }
 
+    /**
+     * Processa o login do usuário
+     */
     private void handleLogin(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String email = (String) data.get("email");
         String password = (String) data.get("password");
@@ -51,6 +63,9 @@ public class AuthenticationHandler implements RequestHandler {
         response.putAll(result);
     }
 
+    /**
+     * Processa o registro de um novo usuário
+     */
     private void handleRegister(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String username = (String) data.get("username");
         String email = (String) data.get("email");
@@ -66,6 +81,9 @@ public class AuthenticationHandler implements RequestHandler {
         response.putAll(result);
     }
 
+    /**
+     * Processa o logout do usuário
+     */
     private void handleLogout(WebSocket conn, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId != null) {

@@ -14,10 +14,20 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 
+/**
+ * Classe principal para inicialização do servidor WhatsUT.
+ * Responsável por registrar os serviços RMI e iniciar o servidor WebSocket.
+ */
 public class WhatsUTServer {
+    // Instância do servidor WebSocket
     private static WhatsUTWebSocketServer webSocketServer;
+    // Registro RMI
     private static Registry registry;
     
+    /**
+     * Ponto de entrada da aplicação do servidor.
+     * Inicializa e registra os serviços RMI e inicia o WebSocket.
+     */
     public static void main(String[] args) {
         try {
             System.out.println("Iniciando servidor WhatsUT...");

@@ -22,13 +22,26 @@ import br.com.whatsut.service.AuthenticationService;
 import br.com.whatsut.service.GroupService;
 import br.com.whatsut.service.MessageService;
 import br.com.whatsut.service.UserService;
-// --- novos imports para handlers ---
+
 import br.com.whatsut.websocket.handler.RequestHandler;
 import br.com.whatsut.websocket.handler.AuthenticationHandler;
 import br.com.whatsut.websocket.handler.UserHandler;
 import br.com.whatsut.websocket.handler.MessageHandler;
 import br.com.whatsut.websocket.handler.GroupHandler;
 
+/**
+ * Ponto central de entrada WebSocket da aplicação. Ele delega cada requisição JSON recebida
+ * JSON request (identified by its <code>type</code> field) to a specialised
+ * {@link br.com.whatsut.websocket.handler.RequestHandler} implementation.
+ * <p>
+ * Além de intermediar mensagens, também é responsável por:
+ * <ul>
+ *   <li>Gerenciar o mapa em memória que conecta cada {@link WebSocket} à
+ *       to a user <code>sessionId</code>;</li>
+ *   <li>Inicializar os stubs RMI utilizados pelos handlers específicos;</li>
+ *   <li>Realizar validações simples de conexão/sessão.</li>
+ * </ul>
+ */
 public class WhatsUTWebSocketServer extends WebSocketServer {
     private final ConcurrentMap<WebSocket, String> sessions = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -49,11 +62,24 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         registerHandlers();
     }
 
-    public boolean isUserOnline(String userId) {
+    /**
+ * Verifica se um usuário está conectado em pelo menos uma sessão
+ * WebSocket session.
+ *
+ * @param userId the user identifier to verify
+ * @return <code>true</code> if the user has an open connection, otherwise
+ *         <code>false</code>
+ */
+public boolean isUserOnline(String userId) {
         return sessions.values().stream().anyMatch(id -> id != null && id.equals(userId));
     }
     
-    private void initRMIServices() {
+    /**
+ * Localiza os stubs RMI remotos necessários para a aplicação. Todos os serviços estão
+ * published on <code>localhost:1099</code> and share the convention that the
+ * RMI binding name equals the simple service interface name.
+ */
+private void initRMIServices() {
         try {
             Registry registry = LocateRegistry.getRegistry("localhost", 1099);
             
@@ -71,7 +97,14 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
     }
     
     @Override
-    public void onOpen(WebSocket conn, ClientHandshake handshake) {
+    /**
+ * Disparado quando um novo handshake WebSocket é concluído.
+ * <p>
+ * If the client provides a valid <code>sessionId</code> query parameter the
+ * method binds that session to the newly created connection and pushes any
+ * pending notifications to the user.
+ */
+public void onOpen(WebSocket conn, ClientHandshake handshake) {
         System.out.println("Nova conexão: " + conn.getRemoteSocketAddress());
         
         // Verificar se há um sessionId na URL
@@ -110,13 +143,20 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
     }
     
     @Override
-    public void onClose(WebSocket conn, int code, String reason, boolean remote) {
+    /**
+ * Realiza limpeza quando um socket é desconectado.
+ */
+public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         System.out.println("Conexão fechada: " + conn.getRemoteSocketAddress());
         sessions.remove(conn);
     }
     
     @Override
-    public void onMessage(WebSocket conn, String message) {
+    /**
+ * Parses incoming JSON payloads, recognises the <code>type</code> field and
+ * forwards the request to {@link #processRequest(WebSocket,String,Map,Map)}.
+ */
+public void onMessage(WebSocket conn, String message) {
         try {
             Map<String, Object> request = objectMapper.readValue(message, Map.class);
             String type = (String) request.get("type");
@@ -143,7 +183,11 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         }
     }
     
-    private void processRequest(WebSocket conn, String type, Map<String, Object> data, Map<String, Object> response) {
+    /**
+ * Delegar a requisição ao handler especializado registrado em
+ * {@link #handlerMap}. If no handler matches, an error response is returned.
+ */
+private void processRequest(WebSocket conn, String type, Map<String, Object> data, Map<String, Object> response) {
         try {
             // 1) Tenta delegar a um handler externo (AuthenticationHandler, UserHandler, etc.)
             RequestHandler externalHandler = handlerMap.get(type);
@@ -168,13 +212,20 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
 
     
     @Override
-    public void onError(WebSocket conn, Exception ex) {
+    /**
+ * Tratamento global de exceções do servidor WebSocket.
+ */
+public void onError(WebSocket conn, Exception ex) {
         System.err.println("Erro na conexão: " + (conn != null ? conn.getRemoteSocketAddress() : "null"));
         ex.printStackTrace();
     }
     
     @Override
-    public void onStart() {
+    /**
+ * Callback executado quando o listener TCP começa a aceitar
+ * connections.
+ */
+public void onStart() {
         System.out.println("Servidor WebSocket iniciado na porta " + getPort());
     }
 
@@ -182,7 +233,11 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
      * Registra os handlers responsáveis por diferentes tipos de requisição,
      * mantendo esta classe mais enxuta.
      */
-    private void registerHandlers() {
+    /**
+ * Preenche {@link #handlerMap} com todos os mapeamentos tipo de requisição → handler. Isso
+ * indirection keeps this class agnostic of the business logic details.
+ */
+private void registerHandlers() {
         AuthenticationHandler authHandler = new AuthenticationHandler(sessions, authService);
         UserHandler userHandler = new UserHandler(sessions, userService, this::isUserOnline);
         MessageHandler messageHandler = new MessageHandler(sessions, messageService);
@@ -223,7 +278,14 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
     }
     
     
-    private String getSessionIdFromQuery(String resourceDescriptor) {
+    /**
+ * Extrai o parâmetro <code>sessionId</code> da query string presente no
+ * descriptor sent during the WebSocket handshake.
+ *
+ * @param resourceDescriptor Caminho bruto + query string, por exemplo "/?sessionId=abc"
+ * @return o identificador de sessão extraído ou <code>null</code> caso não exista
+ */
+private String getSessionIdFromQuery(String resourceDescriptor) {
         if (resourceDescriptor == null || !resourceDescriptor.contains("?")) {
             return null;
         }
@@ -240,18 +302,5 @@ public class WhatsUTWebSocketServer extends WebSocketServer {
         
         return null;
     }
-
-    /**
-     * Processa uma solicitação para entrar em um grupo
-     * @param conn Conexão WebSocket
-     * @param data Dados da requisição
-     * @param response Resposta a ser enviada
-     * @throws Exception Em caso de erro
-     */
-    /**
-     * Encontra a conexão WebSocket de um usuário pelo seu ID
-     * @param userId ID do usuário
-     * @return Conexão WebSocket ou null se não encontrada
-     */
 }
 

@@ -8,10 +8,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Gerenciador de sessões de usuários
+ */
 public class SessionManager {
     private static final String SESSIONS_FILE = "sessions";
     private static Map<String, String> activeSessions;
     
+    // Bloco estático para carregar sessões ao iniciar
     static {
         loadSessions();
     }
@@ -32,6 +36,11 @@ public class SessionManager {
         DataPersistenceUtil.saveData(SESSIONS_FILE, activeSessions);
     }
     
+    /**
+     * Cria uma nova sessão para o usuário
+     * @param userId ID do usuário
+     * @return ID da sessão criada
+     */
     public static String createSession(String userId) {
         String sessionId = UUID.randomUUID().toString();
         activeSessions.put(sessionId, userId);
@@ -39,14 +48,28 @@ public class SessionManager {
         return sessionId;
     }
     
+    /**
+     * Obtém o ID do usuário associado à sessão
+     * @param sessionId ID da sessão
+     * @return ID do usuário ou null
+     */
     public static String getUserIdFromSession(String sessionId) {
         return activeSessions.get(sessionId);
     }
     
+    /**
+     * Verifica se a sessão é válida
+     * @param sessionId ID da sessão
+     * @return true se a sessão for válida
+     */
     public static boolean isValidSession(String sessionId) {
         return sessionId != null && activeSessions.containsKey(sessionId);
     }
     
+    /**
+     * Remove uma sessão ativa
+     * @param sessionId ID da sessão
+     */
     public static void removeSession(String sessionId) {
         activeSessions.remove(sessionId);
         saveSessions();

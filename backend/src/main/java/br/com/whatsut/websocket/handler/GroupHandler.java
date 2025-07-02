@@ -17,22 +17,36 @@ import br.com.whatsut.service.GroupService;
 import br.com.whatsut.service.UserService;
 
 /**
- * Handles group related WebSocket requests.
+ * Processa requisições WebSocket relacionadas a grupos.
  */
 public class GroupHandler implements RequestHandler {
 
+    // Mapa de sessões WebSocket -> sessionId
     private final ConcurrentMap<WebSocket, String> sessions;
+    // Serviço de grupos
     private final GroupService groupService;
+    // DAO para requisições pendentes de entrada em grupo
     private final PendingJoinRequestDAO pendingJoinRequestDAO = new PendingJoinRequestDAO();
+    // Serviço de usuários
     private UserService userService;
+    // ObjectMapper para serialização de notificações
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * Construtor do handler de grupos
+     * @param sessions Mapa de sessões WebSocket
+     * @param groupService Serviço de grupos
+     * @param userService Serviço de usuários
+     */
     public GroupHandler(ConcurrentMap<WebSocket, String> sessions, GroupService groupService, UserService userService) {
         this.sessions = sessions;
         this.groupService = groupService;
         this.userService = userService;
     }
 
+    /**
+     * Processa o tipo de requisição de grupo recebido
+     */
     @Override
     public void handle(String type, WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         switch (type) {
@@ -87,6 +101,9 @@ public class GroupHandler implements RequestHandler {
         }
     }
 
+    /**
+     * Valida se a sessão está autenticada
+     */
     private boolean validateSession(WebSocket conn, Map<String, Object> response) {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -97,10 +114,16 @@ public class GroupHandler implements RequestHandler {
         return true;
     }
 
+    /**
+     * Obtém o sessionId da conexão
+     */
     private String getSessionId(WebSocket conn) {
         return sessions.get(conn);
     }
 
+    /**
+     * Obtém todos os grupos do usuário logado
+     */
     private void handleGetGroups(WebSocket conn, Map<String, Object> response) throws Exception {
         if (!validateSession(conn, response)) return;
         List<Map<String, Object>> groups = groupService.getGroups(getSessionId(conn));
@@ -108,6 +131,9 @@ public class GroupHandler implements RequestHandler {
         response.put("data", groups);
     }
 
+    /**
+     * Obtém todos os grupos disponíveis para o usuário
+     */
     private void handleGetAllAvailableGroups(WebSocket conn, Map<String, Object> response) throws Exception {
         if (!validateSession(conn, response)) return;
         List<Map<String, Object>> groups = groupService.getAllAvailableGroups(getSessionId(conn));
@@ -115,6 +141,9 @@ public class GroupHandler implements RequestHandler {
         response.put("data", groups);
     }
 
+    /**
+     * Cria um novo grupo
+     */
     private void handleCreateGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         if (!validateSession(conn, response)) return;
         // Aceitar tanto "groupName" (padrão antigo) quanto "name" (usado pelo frontend)
@@ -144,6 +173,9 @@ public class GroupHandler implements RequestHandler {
         response.put("data", group);
     }
 
+    /**
+     * Obtém as mensagens de um grupo
+     */
     private void handleGetGroupMessages(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         if (!validateSession(conn, response)) return;
         String groupId = (String) data.get("groupId");
@@ -157,6 +189,9 @@ public class GroupHandler implements RequestHandler {
         response.put("data", msgs);
     }
 
+    /**
+     * Envia uma mensagem para o grupo
+     */
     private void handleSendGroupMessage(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         if (!validateSession(conn, response)) return;
         String groupId = (String) data.get("groupId");
@@ -171,6 +206,9 @@ public class GroupHandler implements RequestHandler {
         response.put("data", result);
     }
 
+    /**
+     * Envia um arquivo para o grupo
+     */
     private void handleSendGroupFile(WebSocket conn, Map<String,Object> data, Map<String,Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -199,6 +237,9 @@ public class GroupHandler implements RequestHandler {
         }
     }
 
+    /**
+     * Obtém os membros de um grupo
+     */
     private void handleGetGroupMembers(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         if (!validateSession(conn, response)) return;
         String groupId = (String) data.get("groupId");
@@ -212,6 +253,9 @@ public class GroupHandler implements RequestHandler {
         response.put("data", members);
     }
 
+    /**
+     * Adiciona um usuário ao grupo
+     */
     private void handleAddUserToGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         if (!validateSession(conn, response)) return;
         String groupId = (String) data.get("groupId");
@@ -225,6 +269,9 @@ public class GroupHandler implements RequestHandler {
         response.put("success", true);
     }
 
+    /**
+     * Remove um usuário do grupo
+     */
     private void handleRemoveUserFromGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         if (!validateSession(conn, response)) return;
         String groupId = (String) data.get("groupId");
@@ -241,11 +288,13 @@ public class GroupHandler implements RequestHandler {
         response.put("success", true);
     }
 
+    /**
+     * Define um novo admin para o grupo
+     */
     private void handleSetGroupAdmin(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         if (!validateSession(conn, response)) return;
         String groupId = (String) data.get("groupId");
         String userId = (String) data.get("userId");
-        boolean isAdmin = Boolean.TRUE.equals(data.get("admin"));
         if (groupId == null || userId == null) {
             response.put("success", false);
             response.put("error", "Dados incompletos");
@@ -256,6 +305,9 @@ public class GroupHandler implements RequestHandler {
         response.put("success", true);
     }
 
+    /**
+     * Permite que o usuário saia do grupo
+     */
     private void handleLeaveGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         if (!validateSession(conn, response)) return;
         String groupId = (String) data.get("groupId");
@@ -268,6 +320,9 @@ public class GroupHandler implements RequestHandler {
         response.put("success", true);
     }
 
+    /**
+     * Exclui um grupo
+     */
     private void handleDeleteGroup(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -509,6 +564,9 @@ public class GroupHandler implements RequestHandler {
         }
     }
 
+    /**
+     * Remove notificação de solicitação de entrada em grupo
+     */
     private void handleRemoveJoinRequestNotification(WebSocket conn, Map<String, Object> data, Map<String, Object> response) throws Exception {
         String sessionId = sessions.get(conn);
         if (sessionId == null) {
@@ -530,6 +588,7 @@ public class GroupHandler implements RequestHandler {
             response.put("error", "Notificação não encontrada ou já removida");
         }
     }
+
     /**
      * Encontra a conexão WebSocket de um usuário pelo seu ID
      * @param userId ID do usuário
