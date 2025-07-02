@@ -407,33 +407,36 @@ public class GroupHandler implements RequestHandler {
             (String) groupMap.get("groupId"), (String) groupMap.get("name"), user.getUserId(), user.getDisplayName()
         );
 
+        // Diagnóstico extra: log detalhado
+        System.out.println("[DEBUG] handleRequestJoinGroup: adminId=" + adminId + ", adminConn=" + adminConn);
+
         if (adminConn != null) {
-        // Admin online: envie notificação
-        Map<String, Object> notify = new HashMap<>();
-        notify.put("type", "joinGroupRequest");
-        notify.put("groupId", (String) groupMap.get("groupId"));
-        notify.put("groupName", (String) groupMap.get("name"));
-        notify.put("userId", user.getUserId());
-        notify.put("userName", user.getDisplayName());
-        
-        // Log detalhado antes de enviar a notificação
-        System.out.println("[WhatsUTWebSocketServer] Enviando notificação de solicitação de grupo para admin " + adminId);
-        System.out.println("[WhatsUTWebSocketServer] Detalhes da notificação: " + notify);
-        
-        try {
-            String notifyJson = objectMapper.writeValueAsString(notify);
-            System.out.println("[WhatsUTWebSocketServer] JSON da notificação: " + notifyJson);
-            adminConn.send(notifyJson);
-            System.out.println("[WhatsUTWebSocketServer] Notificação enviada com sucesso!");
-        } catch (Exception e) {
-            System.err.println("[WhatsUTWebSocketServer] Erro ao enviar notificação: " + e.getMessage());
-            e.printStackTrace();
+            // Admin online: envie notificação
+            Map<String, Object> notify = new HashMap<>();
+            notify.put("type", "joinGroupRequest");
+            notify.put("groupId", (String) groupMap.get("groupId"));
+            notify.put("groupName", (String) groupMap.get("name"));
+            notify.put("userId", user.getUserId());
+            notify.put("userName", user.getDisplayName());
+
+            // Log detalhado antes de enviar a notificação
+            System.out.println("[WhatsUTWebSocketServer] Enviando notificação de solicitação de grupo para admin " + adminId);
+            System.out.println("[WhatsUTWebSocketServer] Detalhes da notificação: " + notify);
+
+            try {
+                String notifyJson = objectMapper.writeValueAsString(notify);
+                System.out.println("[WhatsUTWebSocketServer] JSON da notificação: " + notifyJson);
+                adminConn.send(notifyJson);
+                System.out.println("[WhatsUTWebSocketServer] Notificação enviada com sucesso!");
+            } catch (Exception e) {
+                System.err.println("[WhatsUTWebSocketServer] Erro ao enviar notificação: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else {
+            // Admin offline: salve o pedido
+            System.out.println("[WhatsUTWebSocketServer] Admin " + adminId + " está offline. Salvando solicitação para entrega posterior.");
+            pendingJoinRequestDAO.addRequest(adminId, req);
         }
-    } else {
-        // Admin offline: salve o pedido
-        System.out.println("[WhatsUTWebSocketServer] Admin " + adminId + " está offline. Salvando solicitação para entrega posterior.");
-        pendingJoinRequestDAO.addRequest(adminId, req);
-    }
 
         response.put("success", true);
         response.put("message", "Pedido enviado ao admin do grupo.");
